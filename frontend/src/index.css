@@ -1,0 +1,32 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ReviewDrop design system — CLAUDE.md Section 10 */
+@layer base {
+  :root {
+    --brand-primary: #6366f1;
+    --brand-primary-hover: #4f46e5;
+    --background: #fafafa;
+    --surface: #ffffff;
+    --surface-elevated: #f4f4f5;
+    --border: #e4e4e7;
+    --text-primary: #09090b;
+    --text-secondary: #71717a;
+    --text-muted: #a1a1aa;
+    --status-open: #ef4444;
+    --status-in-progress: #f59e0b;
+    --status-resolved: #22c55e;
+    --pin-dot: #6366f1;
+    --destructive: #ef4444;
+    --success: #22c55e;
+  }
+
+  html {
+    font-family: "Inter", system-ui, sans-serif;
+  }
+
+  body {
+    @apply bg-background text-text-primary text-sm leading-normal antialiased;
+  }
+}
