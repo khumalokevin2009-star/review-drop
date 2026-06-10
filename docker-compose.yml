@@ -1,0 +1,53 @@
+# Local dev stack for ReviewDrop: Postgres + FastAPI backend + Vite frontend.
+# (CLAUDE.md Section 5 — Dev Environment.)
+#
+# Note: the `frontend` service expects ./frontend/Dockerfile, which is built by
+# the Frontend agent in a later task. Until then, run just the backend stack:
+#   docker compose up db backend
+
+services:
+  db:
+    image: postgres:15
+    environment:
+      POSTGRES_USER: reviewdrop
+      POSTGRES_PASSWORD: reviewdrop
+      POSTGRES_DB: reviewdrop
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U reviewdrop -d reviewdrop"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build: ./backend
+    env_file:
+      - ./backend/.env
+    environment:
+      # Override the host for in-network DB access (compose service name).
+      DATABASE_URL: postgresql+asyncpg://reviewdrop:reviewdrop@db:5432/reviewdrop
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend:/app
+    depends_on:
+      db:
+        condition: service_healthy
+
+  frontend:
+    build: ./frontend
+    environment:
+      VITE_API_URL: http://localhost:8000
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    depends_on:
+      - backend
+
+volumes:
+  pgdata:
