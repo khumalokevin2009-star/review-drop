@@ -44,6 +44,23 @@ def test_agent_not_injected_by_default():
     assert "rd:ready" not in out
 
 
+def test_agent_includes_region_selection():
+    """The injected agent carries the drag-to-select region system: the rd:click
+    region payload fields, the dim overlay, and the focused-region rectangle."""
+    html = "<html><body></body></html>"
+    out = proxy_service.rewrite_html(html, PAGE_URL, inject_agent=True)
+    for marker in (
+        "regionWidth",
+        "regionHeight",
+        "regionWidthPercent",
+        "regionHeightPercent",
+        "data-rd-overlay",  # drag dim overlay
+        "data-rd-region",   # focused-pin region rectangle
+        "data-rd-mode",     # crosshair / user-select suppression hook
+    ):
+        assert marker in out, marker
+
+
 def test_agent_script_url_injection_hardened():
     # A hostile final_url (e.g. via a crafted redirect) must not break out of
     # the injected <script> via </script> in the embedded page URL.

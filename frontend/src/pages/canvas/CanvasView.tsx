@@ -373,7 +373,15 @@ export default function CanvasView() {
             <input
               type="checkbox"
               checked={showResolved}
-              onChange={(e) => setShowResolved(e.target.checked)}
+              onChange={(e) => {
+                const next = e.target.checked;
+                setShowResolved(next);
+                // Hiding resolved pins must also close a focused resolved
+                // thread — otherwise the panel outlives its pin.
+                if (!next && focused?.comment.status === "resolved") {
+                  setFocusedId(null);
+                }
+              }}
             />
             <MessageSquare className="h-3.5 w-3.5" />
             Show resolved

@@ -28,6 +28,13 @@ FULL_PIN = {
     "screen_width": 2560,
     "screen_height": 1440,
 }
+REGION_FIELDS = {
+    "region_width": 320.0,
+    "region_height": 180.0,
+    "region_width_percent": 25.5,
+    "region_height_percent": 47.25,
+}
+REGION_PIN = {**FULL_PIN, "body": "Tighten this hero section", **REGION_FIELDS}
 
 
 async def _setup_review(client, auth, session_factory, plan="free", project=None):
@@ -117,12 +124,67 @@ async def test_coordinate_round_trip(client, auth, session_factory):
     assert body["author_type"] == "guest"
     assert body["is_mine"] is True
 
+    # a point comment leaves every region dimension null
+    for key in REGION_FIELDS:
+        assert body[key] is None, key
+
     # round-trips identically through the designer view
     auth.user = user
     listed = (await client.get(f"/api/v1/reviews/{review['id']}/comments")).json()
     assert len(listed) == 1
     for key, value in FULL_PIN.items():
         assert listed[0][key] == value, key
+    for key in REGION_FIELDS:
+        assert listed[0][key] is None, key
+
+
+async def test_region_comment_round_trip(client, auth, session_factory):
+    user, project, review = await _setup_review(client, auth, session_factory)
+    token = await _guest_token(client, auth, review["slug"])
+
+    auth.user = None
+    created = await client.post(
+        f"/api/v1/r/{review['slug']}/comments", headers=_h(token), json=REGION_PIN
+    )
+    assert created.status_code == 201, created.text
+    body = created.json()
+    for key, value in {**FULL_PIN, **REGION_PIN}.items():
+        assert body[key] == value, key
+
+    # round-trips through the guest list...
+    guest_view = (
+        await client.get(f"/api/v1/r/{review['slug']}/comments", headers=_h(token))
+    ).json()
+    assert len(guest_view) == 1
+    for key, value in REGION_FIELDS.items():
+        assert guest_view[0][key] == value, key
+
+    # ...and both designer list endpoints
+    auth.user = user
+    for url in (
+        f"/api/v1/reviews/{review['id']}/comments",
+        f"/api/v1/projects/{project.id}/comments",
+    ):
+        listed = (await client.get(url)).json()
+        assert len(listed) == 1
+        for key, value in REGION_FIELDS.items():
+            assert listed[0][key] == value, key
+
+
+async def test_region_dimensions_must_be_non_negative(
+    client, auth, session_factory
+):
+    _, _, review = await _setup_review(client, auth, session_factory)
+    token = await _guest_token(client, auth, review["slug"])
+
+    auth.user = None
+    for field in REGION_FIELDS:
+        bad = await client.post(
+            f"/api/v1/r/{review['slug']}/comments",
+            headers=_h(token),
+            json={**REGION_PIN, field: -1},
+        )
+        assert bad.status_code == 422, field
 
 
 # --- status transitions -----------------------------------------------------

@@ -378,8 +378,11 @@ _AGENT_SCRIPT_TEMPLATE = r"""
   var mode = "browse";
   var pins = [];
   var container = null;
+  var focusedId = null;
   var STATUS_COLORS = { open: "#EF4444", in_progress: "#F59E0B", resolved: "#22C55E" };
+  var BRAND = "#6366F1";
   var Z = "2147483646";
+  var DRAG_MIN = 6; // px of page-space travel before a press becomes a region
 
   function post(msg) { try { parentWin.postMessage(msg, "*"); } catch (e) {} }
   function host(u) { try { return new URL(u).host; } catch (e) { return ""; } }
@@ -416,6 +419,238 @@ _AGENT_SCRIPT_TEMPLATE = r"""
     var v = ((client - start) / size) * 100;
     return Math.max(0, Math.min(100, Math.round(v * 100) / 100));
   }
+  function round2(v) { return Math.round(v * 100) / 100; }
+
+  // --- comment-mode page styling (crosshair + selection suppression) --------
+
+  var modeStyle = null;
+  function ensureModeStyle() {
+    if (modeStyle && modeStyle.parentNode) return;
+    modeStyle = document.createElement("style");
+    modeStyle.setAttribute("data-rd-style", "");
+    modeStyle.textContent =
+      "html[data-rd-mode=comment], html[data-rd-mode=comment] * {" +
+      " cursor: crosshair !important;" +
+      " user-select: none !important; -webkit-user-select: none !important;" +
+      " -ms-user-select: none !important; }" +
+      " html[data-rd-mode=comment] [data-rd-pin] { cursor: pointer !important; }";
+    (document.head || document.documentElement).appendChild(modeStyle);
+  }
+  function applyMode() {
+    ensureModeStyle();
+    if (mode === "comment") {
+      document.documentElement.setAttribute("data-rd-mode", "comment");
+    } else {
+      document.documentElement.removeAttribute("data-rd-mode");
+      cancelDrag();
+    }
+  }
+
+  // --- region drag selection (the Cmd+Shift+4 interaction) ------------------
+
+  // Start point is PAGE-anchored (stays glued to content if the user scrolls
+  // mid-drag to extend the selection); the live corner is the latest CLIENT
+  // position, converted at render/commit time.
+  var drag = null; // { startPageX/Y, curClientX/Y, region, point }
+  var ovl = null;  // { root, shades[4], box, badge }
+
+  function pointDataAt(target, clientX, clientY) {
+    var rect = target && target.getBoundingClientRect ? target.getBoundingClientRect() : null;
+    return {
+      selector: selectorFor(target),
+      percentX: rect ? pct(clientX, rect.left, rect.width) : null,
+      percentY: rect ? pct(clientY, rect.top, rect.height) : null,
+      // Clamp: rubber-band overscroll can make scroll offsets momentarily
+      // negative, and the backend rejects negative absolute coordinates.
+      absX: Math.max(0, Math.round(clientX + window.scrollX)),
+      absY: Math.max(0, Math.round(clientY + window.scrollY)),
+      clientX: Math.round(clientX),
+      clientY: Math.round(clientY)
+    };
+  }
+
+  function ensureDragOverlay() {
+    if (ovl && ovl.root.parentNode) return ovl;
+    var root = document.createElement("div");
+    root.setAttribute("data-rd-overlay", "");
+    root.style.cssText = "position:fixed;left:0;top:0;right:0;bottom:0;margin:0;padding:0;border:0;pointer-events:none;z-index:2147483647;";
+    var shades = [];
+    for (var i = 0; i < 4; i++) {
+      var s = document.createElement("div");
+      s.style.cssText = "position:absolute;pointer-events:none;background:rgba(0,0,0,0.25);";
+      root.appendChild(s); shades.push(s);
+    }
+    var box = document.createElement("div");
+    box.style.cssText = "position:absolute;pointer-events:none;border:1.5px solid " + BRAND + ";box-sizing:border-box;";
+    root.appendChild(box);
+    var badge = document.createElement("div");
+    badge.style.cssText = "position:absolute;pointer-events:none;background:#18181B;color:#fff;font:500 11px/1 -apple-system,BlinkMacSystemFont,system-ui,sans-serif;padding:4px 6px;border-radius:4px;white-space:nowrap;";
+    root.appendChild(badge);
+    (document.body || document.documentElement).appendChild(root);
+    ovl = { root: root, shades: shades, box: box, badge: badge };
+    return ovl;
+  }
+  function removeDragOverlay() {
+    if (ovl && ovl.root.parentNode) ovl.root.parentNode.removeChild(ovl.root);
+    ovl = null;
+  }
+  function setRect(el, x, y, w, h) {
+    el.style.left = x + "px"; el.style.top = y + "px";
+    el.style.width = Math.max(0, w) + "px"; el.style.height = Math.max(0, h) + "px";
+  }
+  function renderDragOverlay() {
+    if (!drag || !drag.region) return;
+    var o = ensureDragOverlay();
+    // position:fixed is hijacked by transformed ancestors; measure the
+    // container's real offset and compensate.
+    var or = o.root.getBoundingClientRect();
+    var x1 = drag.startPageX - window.scrollX - or.left;
+    var y1 = drag.startPageY - window.scrollY - or.top;
+    var x2 = drag.curClientX - or.left;
+    var y2 = drag.curClientY - or.top;
+    var L = Math.min(x1, x2), T = Math.min(y1, y2);
+    var W = Math.abs(x2 - x1), H = Math.abs(y2 - y1);
+    var vw = window.innerWidth, vh = window.innerHeight;
+    setRect(o.shades[0], 0, 0, vw, Math.max(0, T));            // above
+    setRect(o.shades[1], 0, T + H, vw, Math.max(0, vh - T - H)); // below
+    setRect(o.shades[2], 0, T, Math.max(0, L), H);             // left
+    setRect(o.shades[3], L + W, T, Math.max(0, vw - L - W), H); // right
+    setRect(o.box, L, T, W, H);
+    o.badge.textContent = Math.round(W) + " × " + Math.round(H);
+    var bx = x2 + 12, by = y2 + 12;
+    var bw = o.badge.offsetWidth, bh = o.badge.offsetHeight;
+    if (bx + bw > vw - 4) bx = x2 - bw - 12;
+    if (by + bh > vh - 4) by = y2 - bh - 12;
+    // Flipping can land off-screen near the left/top edges — clamp last.
+    bx = Math.max(4, Math.min(bx, vw - bw - 4));
+    by = Math.max(4, Math.min(by, vh - bh - 4));
+    o.badge.style.left = bx + "px"; o.badge.style.top = by + "px";
+  }
+  function cancelDrag() {
+    drag = null;
+    removeDragOverlay();
+  }
+  function maybeUpgradeToRegion() {
+    if (!drag || drag.region) return;
+    var dx = (drag.curClientX + window.scrollX) - drag.startPageX;
+    var dy = (drag.curClientY + window.scrollY) - drag.startPageY;
+    if (Math.sqrt(dx * dx + dy * dy) >= DRAG_MIN) drag.region = true;
+  }
+
+  // elementFromPoint would hit our own pins; hide them for the query.
+  function elementFromPointSafe(x, y) {
+    var el = null, prev = null;
+    if (container) { prev = container.style.display; container.style.display = "none"; }
+    try { el = document.elementFromPoint(x, y); } catch (err) {}
+    if (container) container.style.display = prev || "";
+    return el;
+  }
+
+  function emitPoint(p) {
+    post({
+      type: "rd:click",
+      selector: p.selector,
+      percentX: p.percentX,
+      percentY: p.percentY,
+      absX: p.absX,
+      absY: p.absY,
+      clientX: p.clientX,
+      clientY: p.clientY,
+      regionWidth: null,
+      regionHeight: null,
+      regionWidthPercent: null,
+      regionHeightPercent: null,
+      viewportWidth: window.innerWidth,
+      viewportHeight: window.innerHeight,
+      pageUrl: PAGE_URL
+    });
+  }
+  function emitRegion(d, upClientX, upClientY) {
+    var upPageX = upClientX + window.scrollX, upPageY = upClientY + window.scrollY;
+    var left = Math.min(d.startPageX, upPageX), top = Math.min(d.startPageY, upPageY);
+    var w = Math.abs(upPageX - d.startPageX), h = Math.abs(upPageY - d.startPageY);
+    // Anchor (top-left) element: only resolvable while it's inside the viewport;
+    // otherwise fall back to absolute coordinates alone.
+    var ax = left - window.scrollX, ay = top - window.scrollY;
+    var el = null;
+    if (ax >= 0 && ay >= 0 && ax < window.innerWidth && ay < window.innerHeight) {
+      el = elementFromPointSafe(ax, ay);
+    }
+    var rect = el && el.getBoundingClientRect ? el.getBoundingClientRect() : null;
+    post({
+      type: "rd:click",
+      selector: el ? selectorFor(el) : null,
+      percentX: rect ? pct(ax, rect.left, rect.width) : null,
+      percentY: rect ? pct(ay, rect.top, rect.height) : null,
+      absX: Math.max(0, Math.round(left)),
+      absY: Math.max(0, Math.round(top)),
+      clientX: Math.round(upClientX),
+      clientY: Math.round(upClientY),
+      regionWidth: Math.round(w),
+      regionHeight: Math.round(h),
+      regionWidthPercent: rect && rect.width ? round2((w / rect.width) * 100) : null,
+      regionHeightPercent: rect && rect.height ? round2((h / rect.height) * 100) : null,
+      viewportWidth: window.innerWidth,
+      viewportHeight: window.innerHeight,
+      pageUrl: PAGE_URL
+    });
+  }
+  function finishDrag(upClientX, upClientY) {
+    var d = drag;
+    drag = null;
+    removeDragOverlay();
+    if (!d) return;
+    if (d.region) emitRegion(d, upClientX, upClientY);
+    else emitPoint(d.point);
+  }
+
+  function onMouseDown(e) {
+    if (mode !== "comment" || e.button !== 0) return;
+    var t = e.target;
+    if (t && t.closest && t.closest("[data-rd-pin]")) return; // pins stay clickable
+    e.preventDefault(); e.stopPropagation();
+    drag = {
+      startPageX: e.clientX + window.scrollX,
+      startPageY: e.clientY + window.scrollY,
+      curClientX: e.clientX,
+      curClientY: e.clientY,
+      region: false,
+      point: pointDataAt(t, e.clientX, e.clientY)
+    };
+  }
+  function onMouseMove(e) {
+    if (!drag) return;
+    // Released outside the iframe: the mouseup never reached us; commit at the
+    // last point we knew about as soon as the cursor returns button-less.
+    if ((e.buttons & 1) === 0) { finishDrag(drag.curClientX, drag.curClientY); return; }
+    drag.curClientX = e.clientX;
+    drag.curClientY = e.clientY;
+    maybeUpgradeToRegion();
+    if (drag.region) { e.preventDefault(); renderDragOverlay(); }
+  }
+  function onMouseUp(e) {
+    if (!drag) return;
+    e.preventDefault(); e.stopPropagation();
+    drag.curClientX = e.clientX;
+    drag.curClientY = e.clientY;
+    maybeUpgradeToRegion();
+    finishDrag(e.clientX, e.clientY);
+  }
+  function onKeyDown(e) {
+    if (drag && e.key === "Escape") {
+      e.preventDefault(); e.stopPropagation();
+      cancelDrag();
+    }
+  }
+  function onScroll() {
+    if (!drag) return;
+    maybeUpgradeToRegion();
+    renderDragOverlay();
+  }
+  function onBlur() { cancelDrag(); }
+  function onDragStart(e) { if (mode === "comment") e.preventDefault(); }
+
+  // --- clicks (pins, navigation, comment-mode freeze) ------------------------
 
   function onClick(e) {
     var t = e.target;
@@ -426,21 +661,9 @@ _AGENT_SCRIPT_TEMPLATE = r"""
       return;
     }
     if (mode === "comment") {
+      // Swallow the click so the page stays frozen; the mousedown/mouseup
+      // drag controller above owns comment emission (point or region).
       e.preventDefault(); e.stopPropagation();
-      var rect = t && t.getBoundingClientRect ? t.getBoundingClientRect() : null;
-      post({
-        type: "rd:click",
-        selector: selectorFor(t),
-        percentX: rect ? pct(e.clientX, rect.left, rect.width) : null,
-        percentY: rect ? pct(e.clientY, rect.top, rect.height) : null,
-        absX: Math.round(e.pageX),
-        absY: Math.round(e.pageY),
-        clientX: Math.round(e.clientX),
-        clientY: Math.round(e.clientY),
-        viewportWidth: window.innerWidth,
-        viewportHeight: window.innerHeight,
-        pageUrl: PAGE_URL
-      });
       return;
     }
     var a = t && t.closest ? t.closest("a[href]") : null;
@@ -455,6 +678,8 @@ _AGENT_SCRIPT_TEMPLATE = r"""
       // cross-host links stay disabled (kept on the project's site)
     }
   }
+
+  // --- pin + region rendering -------------------------------------------------
 
   function ensureContainer() {
     if (container && container.parentNode) return container;
@@ -472,13 +697,26 @@ _AGENT_SCRIPT_TEMPLATE = r"""
         var r = el.getBoundingClientRect();
         var fx = (p.percentX == null ? 50 : p.percentX) / 100;
         var fy = (p.percentY == null ? 50 : p.percentY) / 100;
-        return { x: r.left + window.scrollX + r.width * fx, y: r.top + window.scrollY + r.height * fy };
+        return { x: r.left + window.scrollX + r.width * fx, y: r.top + window.scrollY + r.height * fy, el: el };
       }
     }
     if (typeof p.absX === "number" && typeof p.absY === "number") {
-      return { x: p.absX, y: p.absY };
+      return { x: p.absX, y: p.absY, el: null };
     }
     return null;
+  }
+  // Region size on replay mirrors the hybrid pin philosophy: prefer dimensions
+  // relative to the anchor element's CURRENT size, fall back to absolute px.
+  function regionSize(p, pos) {
+    var w = null, h = null;
+    if (pos.el) {
+      var r = pos.el.getBoundingClientRect();
+      if (typeof p.regionWidthPercent === "number") w = (r.width * p.regionWidthPercent) / 100;
+      if (typeof p.regionHeightPercent === "number") h = (r.height * p.regionHeightPercent) / 100;
+    }
+    if (w == null && typeof p.regionWidth === "number") w = p.regionWidth;
+    if (h == null && typeof p.regionHeight === "number") h = p.regionHeight;
+    return w != null && h != null ? { w: w, h: h } : null;
   }
   function renderPins() {
     var c = ensureContainer();
@@ -493,6 +731,16 @@ _AGENT_SCRIPT_TEMPLATE = r"""
     for (var i = 0; i < pins.length; i++) {
       var p = pins[i], pos = resolvePos(p);
       if (!pos) { unplaced.push(p.id); continue; }
+      // Focused region pins draw their rectangle (unfocused: pin only).
+      if (p.id === focusedId) {
+        var size = regionSize(p, pos);
+        if (size) {
+          var rgn = document.createElement("div");
+          rgn.setAttribute("data-rd-region", p.id);
+          rgn.style.cssText = "position:absolute;left:" + (pos.x - originX) + "px;top:" + (pos.y - originY) + "px;width:" + size.w + "px;height:" + size.h + "px;border:1.5px solid " + BRAND + ";background:rgba(99,102,241,0.08);border-radius:2px;pointer-events:none;box-sizing:border-box;";
+          c.appendChild(rgn);
+        }
+      }
       var d = document.createElement("div");
       d.setAttribute("data-rd-pin", p.id);
       var color = STATUS_COLORS[p.status] || STATUS_COLORS.open;
@@ -509,20 +757,29 @@ _AGENT_SCRIPT_TEMPLATE = r"""
     if (!d || typeof d.type !== "string") return;
     if (d.type === "rd:set-mode") {
       mode = d.mode === "comment" ? "comment" : "browse";
-      document.documentElement.style.cursor = mode === "comment" ? "crosshair" : "";
+      applyMode();
     } else if (d.type === "rd:render-pins") {
       pins = Array.isArray(d.pins) ? d.pins : [];
       renderPins();
     } else if (d.type === "rd:focus-pin") {
-      if (!container) return;
-      var sel = '[data-rd-pin="' + String(d.id).replace(/"/g, '\\"') + '"]';
-      var el = container.querySelector(sel);
-      if (el && el.scrollIntoView) el.scrollIntoView({ block: "center", behavior: "smooth" });
+      var newId = d.id == null ? null : String(d.id);
+      if (newId === focusedId) return;
+      focusedId = newId;
+      renderPins(); // draw/clear the focused region rectangle
+      if (newId && container) {
+        var sel = '[data-rd-pin="' + newId.replace(/"/g, '\\"') + '"]';
+        var el = container.querySelector(sel);
+        if (el && el.scrollIntoView) el.scrollIntoView({ block: "center", behavior: "smooth" });
+      }
     }
   }
 
   var rt = null;
-  function onResize() { if (rt) clearTimeout(rt); rt = setTimeout(renderPins, 150); }
+  function onResize() {
+    if (rt) clearTimeout(rt);
+    rt = setTimeout(renderPins, 150);
+    renderDragOverlay(); // keep an in-flight selection accurate immediately
+  }
   function docHeight() {
     var b = document.body, h = document.documentElement;
     return Math.max(b ? b.scrollHeight : 0, h ? h.scrollHeight : 0);
@@ -531,6 +788,13 @@ _AGENT_SCRIPT_TEMPLATE = r"""
     // Listen on window (capture) so we sit above any document-level capture
     // handler the target site installed.
     window.addEventListener("click", onClick, true);
+    window.addEventListener("mousedown", onMouseDown, true);
+    window.addEventListener("mousemove", onMouseMove, true);
+    window.addEventListener("mouseup", onMouseUp, true);
+    window.addEventListener("keydown", onKeyDown, true);
+    window.addEventListener("dragstart", onDragStart, true);
+    window.addEventListener("scroll", onScroll, true);
+    window.addEventListener("blur", onBlur);
     window.addEventListener("message", onMessage);
     window.addEventListener("resize", onResize);
     post({ type: "rd:ready", pageUrl: PAGE_URL, docHeight: docHeight() });

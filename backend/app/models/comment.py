@@ -67,6 +67,15 @@ class Comment(UUIDMixin, TimestampMixin, SoftDeleteMixin, Base):
     pin_y_absolute: Mapped[int | None] = mapped_column(Integer, nullable=True)
     screenshot_url: Mapped[str | None] = mapped_column(Text, nullable=True)
 
+    # Region selection (drag-to-select). All four stay NULL for point comments.
+    # The pin coordinates above are the region's top-left anchor; width/height
+    # are page-coordinate pixels, the percent dims are relative to the anchor
+    # element's size (may exceed 100 when the region outgrows the element).
+    region_width: Mapped[float | None] = mapped_column(Float, nullable=True)
+    region_height: Mapped[float | None] = mapped_column(Float, nullable=True)
+    region_width_percent: Mapped[float | None] = mapped_column(Float, nullable=True)
+    region_height_percent: Mapped[float | None] = mapped_column(Float, nullable=True)
+
     # Client metadata (for developers)
     browser_name: Mapped[str | None] = mapped_column(String(100), nullable=True)
     browser_version: Mapped[str | None] = mapped_column(String(50), nullable=True)

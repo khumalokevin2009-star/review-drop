@@ -91,6 +91,10 @@ export function CanvasFrame({
             absY: msg.absY,
             clientX: msg.clientX,
             clientY: msg.clientY,
+            regionWidth: msg.regionWidth ?? null,
+            regionHeight: msg.regionHeight ?? null,
+            regionWidthPercent: msg.regionWidthPercent ?? null,
+            regionHeightPercent: msg.regionHeightPercent ?? null,
             viewportWidth: msg.viewportWidth,
             viewportHeight: msg.viewportHeight,
             pageUrl: msg.pageUrl,
@@ -124,8 +128,10 @@ export function CanvasFrame({
     if (ready) post({ type: "rd:render-pins", pins });
   }, [ready, pins, post]);
 
+  // Null is meaningful: it clears the agent's focus (hides the focused
+  // region rectangle), so post on every change rather than only when set.
   useEffect(() => {
-    if (ready && focusPinId) post({ type: "rd:focus-pin", id: focusPinId });
+    if (ready) post({ type: "rd:focus-pin", id: focusPinId ?? null });
   }, [ready, focusPinId, post]);
 
   return (

@@ -79,6 +79,11 @@ export interface Comment {
   viewport_height: number | null;
   pin_x_absolute: number | null;
   pin_y_absolute: number | null;
+  /** Region selection (drag-to-select) — all four null for point comments. */
+  region_width: number | null;
+  region_height: number | null;
+  region_width_percent: number | null;
+  region_height_percent: number | null;
   screenshot_url: string | null;
   created_at: string;
   updated_at: string;

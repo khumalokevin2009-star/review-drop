@@ -47,6 +47,15 @@ class CommentCreate(BaseModel):
     pin_x_absolute: int | None = Field(default=None, ge=0)
     pin_y_absolute: int | None = Field(default=None, ge=0)
 
+    # Region selection (drag-to-select); all four stay None for point comments.
+    # The pin coordinates are the region's top-left anchor. Percent dims are
+    # relative to the anchor element and may exceed 100 (region larger than
+    # the element), so only the lower bound is enforced.
+    region_width: float | None = Field(default=None, ge=0)
+    region_height: float | None = Field(default=None, ge=0)
+    region_width_percent: float | None = Field(default=None, ge=0)
+    region_height_percent: float | None = Field(default=None, ge=0)
+
     # Client metadata (for developers).
     browser_name: str | None = Field(default=None, max_length=100)
     browser_version: str | None = Field(default=None, max_length=50)
@@ -94,6 +103,11 @@ class CommentRead(BaseModel):
     pin_x_absolute: int | None
     pin_y_absolute: int | None
     screenshot_url: str | None
+
+    region_width: float | None
+    region_height: float | None
+    region_width_percent: float | None
+    region_height_percent: float | None
 
     browser_name: str | None
     browser_version: str | None

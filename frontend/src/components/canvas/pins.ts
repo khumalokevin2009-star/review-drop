@@ -55,6 +55,10 @@ export function toPinData(
       percentY: n.comment.pin_y_percent,
       absX: n.comment.pin_x_absolute,
       absY: n.comment.pin_y_absolute,
+      regionWidth: n.comment.region_width,
+      regionHeight: n.comment.region_height,
+      regionWidthPercent: n.comment.region_width_percent,
+      regionHeightPercent: n.comment.region_height_percent,
     }));
 }
 

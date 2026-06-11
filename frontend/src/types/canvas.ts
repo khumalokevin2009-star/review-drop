@@ -17,8 +17,22 @@ export interface CanvasComment extends Comment {
   is_mine?: boolean | null;
 }
 
-/** What the parent hands the agent to render a single pin. */
-export interface PinData {
+/**
+ * Region-selection dimensions (drag-to-select). All null for point comments.
+ * Width/height are page-coordinate px; the percent dims are relative to the
+ * anchor element's size and may exceed 100 (region larger than the element).
+ */
+export interface CanvasRegionDims {
+  regionWidth: number | null;
+  regionHeight: number | null;
+  regionWidthPercent: number | null;
+  regionHeightPercent: number | null;
+}
+
+/** What the parent hands the agent to render a single pin. For region
+ * comments the pin sits at the region's top-left anchor and the rectangle is
+ * drawn only while the pin is focused. */
+export interface PinData extends CanvasRegionDims {
   id: string;
   number: number;
   status: CommentStatus;
@@ -29,8 +43,10 @@ export interface PinData {
   absY: number | null;
 }
 
-/** Coordinates captured from a comment-mode click inside the iframe. */
-export interface CanvasClickCoords {
+/** Coordinates captured from a comment-mode click (or drag) inside the iframe.
+ * For regions, selector/percent/abs describe the rect's TOP-LEFT anchor while
+ * clientX/clientY stay at the release point (where the popover belongs). */
+export interface CanvasClickCoords extends CanvasRegionDims {
   selector: string | null;
   percentX: number | null;
   percentY: number | null;
@@ -55,6 +71,10 @@ export interface CommentCreatePayload {
   viewport_height: number | null;
   pin_x_absolute: number | null;
   pin_y_absolute: number | null;
+  region_width: number | null;
+  region_height: number | null;
+  region_width_percent: number | null;
+  region_height_percent: number | null;
   browser_name: string | null;
   browser_version: string | null;
   os_name: string | null;
@@ -64,16 +84,20 @@ export interface CommentCreatePayload {
 
 /* -------- postMessage protocol -------- */
 
-/** Parent → iframe agent (commands). */
+/** Parent → iframe agent (commands). `rd:focus-pin` with id null clears the
+ * focus (and hides any focused region rectangle). */
 export type RdOutboundMessage =
   | { type: "rd:set-mode"; mode: CanvasMode }
   | { type: "rd:render-pins"; pins: PinData[] }
-  | { type: "rd:focus-pin"; id: string };
+  | { type: "rd:focus-pin"; id: string | null };
 
-/** iframe agent → parent (events). */
+/** iframe agent → parent (events). The region dims are optional on the wire
+ * (an agent injected before this release omits them); CanvasFrame normalises
+ * them to nulls before handing coords to the app. */
 export type RdInboundMessage =
   | { type: "rd:ready"; pageUrl: string; docHeight: number }
-  | ({ type: "rd:click" } & CanvasClickCoords)
+  | ({ type: "rd:click" } & Omit<CanvasClickCoords, keyof CanvasRegionDims> &
+      Partial<CanvasRegionDims>)
   | { type: "rd:navigate"; path: string }
   | { type: "rd:pin-click"; id: string }
   | { type: "rd:unplaced"; ids: string[] };
