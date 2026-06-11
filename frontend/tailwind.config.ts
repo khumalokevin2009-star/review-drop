@@ -38,13 +38,40 @@ export default {
         success: "#22C55E",
       },
       fontFamily: {
-        sans: ["Inter", "system-ui", "sans-serif"],
-        mono: ["JetBrains Mono", "ui-monospace", "monospace"],
+        sans: ["Geist Sans", "system-ui", "sans-serif"],
+        mono: ["Geist Mono", "ui-monospace", "monospace"],
       },
       borderRadius: {
         lg: "0.5rem",
         md: "0.375rem",
         sm: "0.25rem",
+      },
+      keyframes: {
+        "accordion-down": {
+          from: { height: "0" },
+          to: { height: "var(--radix-accordion-content-height)" },
+        },
+        "accordion-up": {
+          from: { height: "var(--radix-accordion-content-height)" },
+          to: { height: "0" },
+        },
+        // Landing illustrations — looping pulse ring on comment pins.
+        "pin-pulse": {
+          "0%": { transform: "scale(1)", opacity: "0.5" },
+          "55%": { transform: "scale(2.1)", opacity: "0" },
+          "100%": { transform: "scale(2.1)", opacity: "0" },
+        },
+        // Landing illustrations — dashes flowing left-to-right (dash period 8).
+        "dash-flow": {
+          from: { strokeDashoffset: "0" },
+          to: { strokeDashoffset: "-16" },
+        },
+      },
+      animation: {
+        "accordion-down": "accordion-down 0.2s ease-out",
+        "accordion-up": "accordion-up 0.2s ease-out",
+        "pin-pulse": "pin-pulse 3s cubic-bezier(0.22, 1, 0.36, 1) infinite",
+        "dash-flow": "dash-flow 2s linear infinite",
       },
     },
   },

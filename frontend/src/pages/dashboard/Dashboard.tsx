@@ -234,7 +234,7 @@ export default function Dashboard() {
       <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
         <div className="mb-6 flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-semibold text-text-primary">
+            <h1 className="text-2xl font-semibold tracking-tight text-text-primary">
               Projects
             </h1>
             <p className="text-sm text-text-secondary">
