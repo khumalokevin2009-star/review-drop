@@ -15,6 +15,8 @@ import type {
   ProjectCreatePayload,
   ProjectUpdatePayload,
   Review,
+  ReviewCreatePayload,
+  ReviewUpdatePayload,
 } from "@/types";
 
 export const projectKeys = {
@@ -130,6 +132,105 @@ export function useDeleteProject() {
     },
     onSettled: () => {
       void queryClient.invalidateQueries({ queryKey: projectKeys.all });
+    },
+  });
+}
+
+// --- Reviews (CLAUDE.md Section 8 contract) ---------------------------------
+
+/** All reviews for a project — drives the project detail page. */
+export function useReviewsForProject(projectId: string, enabled = true) {
+  return useQuery({
+    queryKey: projectKeys.reviews(projectId),
+    queryFn: async () => {
+      const { data } = await api.get<Review[]>(
+        `/projects/${projectId}/reviews`,
+      );
+      return data;
+    },
+    enabled: Boolean(projectId) && enabled,
+  });
+}
+
+export function useCreateReview(projectId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (payload: ReviewCreatePayload) => {
+      const { data } = await api.post<Review>(
+        `/projects/${projectId}/reviews`,
+        payload,
+      );
+      return data;
+    },
+    onSuccess: (created) => {
+      queryClient.setQueryData<Review[]>(
+        projectKeys.reviews(projectId),
+        (old) => (old ? [created, ...old] : [created]),
+      );
+      void queryClient.invalidateQueries({
+        queryKey: projectKeys.reviews(projectId),
+      });
+    },
+  });
+}
+
+export function useUpdateReview(projectId: string) {
+  const queryClient = useQueryClient();
+  const key = projectKeys.reviews(projectId);
+  return useMutation({
+    mutationFn: async ({
+      id,
+      payload,
+    }: {
+      id: string;
+      payload: ReviewUpdatePayload;
+    }) => {
+      const { data } = await api.patch<Review>(`/reviews/${id}`, payload);
+      return data;
+    },
+    // Optimistic: apply the patch to the cached list immediately.
+    onMutate: async ({ id, payload }) => {
+      await queryClient.cancelQueries({ queryKey: key });
+      const previous = queryClient.getQueryData<Review[]>(key);
+      queryClient.setQueryData<Review[]>(key, (old) =>
+        old?.map((r) => (r.id === id ? { ...r, ...payload } : r)),
+      );
+      return { previous };
+    },
+    onError: (_err, _vars, context) => {
+      if (context?.previous) {
+        queryClient.setQueryData(key, context.previous);
+      }
+    },
+    onSettled: () => {
+      void queryClient.invalidateQueries({ queryKey: key });
+    },
+  });
+}
+
+export function useDeleteReview(projectId: string) {
+  const queryClient = useQueryClient();
+  const key = projectKeys.reviews(projectId);
+  return useMutation({
+    mutationFn: async (id: string) => {
+      await api.delete(`/reviews/${id}`);
+    },
+    // Optimistic: remove from cached list immediately, roll back on error.
+    onMutate: async (id) => {
+      await queryClient.cancelQueries({ queryKey: key });
+      const previous = queryClient.getQueryData<Review[]>(key);
+      queryClient.setQueryData<Review[]>(key, (old) =>
+        old?.filter((r) => r.id !== id),
+      );
+      return { previous };
+    },
+    onError: (_err, _id, context) => {
+      if (context?.previous) {
+        queryClient.setQueryData(key, context.previous);
+      }
+    },
+    onSettled: () => {
+      void queryClient.invalidateQueries({ queryKey: key });
     },
   });
 }

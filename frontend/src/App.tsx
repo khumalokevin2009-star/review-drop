@@ -13,6 +13,7 @@ import Dashboard from "@/pages/dashboard/Dashboard";
 const Landing = lazy(() => import("@/pages/landing/Landing"));
 // Code-split the canvas (iframe bridge + pin system) — only loaded when reviewing.
 const CanvasView = lazy(() => import("@/pages/canvas/CanvasView"));
+const ProjectView = lazy(() => import("@/pages/project/ProjectView"));
 const ReviewPage = lazy(() => import("@/pages/review/ReviewPage"));
 
 export default function App() {
@@ -36,6 +37,14 @@ export default function App() {
       {/* Protected */}
       <Route element={<ProtectedRoute />}>
         <Route path="/dashboard" element={<Dashboard />} />
+        <Route
+          path="/projects/:projectId"
+          element={
+            <Suspense fallback={<LoadingSpinner />}>
+              <ProjectView />
+            </Suspense>
+          }
+        />
         <Route
           path="/reviews/:reviewId/canvas"
           element={

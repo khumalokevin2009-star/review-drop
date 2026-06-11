@@ -95,6 +95,17 @@ export interface Review {
   updated_at: string;
 }
 
+export interface ReviewCreatePayload {
+  name?: string;
+  expires_at?: string | null;
+}
+
+export interface ReviewUpdatePayload {
+  name?: string;
+  is_active?: boolean;
+  expires_at?: string | null;
+}
+
 export interface GuestSession {
   id: string;
   review_id: string;

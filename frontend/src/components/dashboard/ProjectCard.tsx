@@ -7,6 +7,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { useState } from "react";
+import { Link } from "react-router-dom";
 import { toast } from "sonner";
 
 import {
@@ -90,8 +91,12 @@ export function ProjectCard({ project }: ProjectCardProps) {
   return (
     <>
       <Card className="group overflow-hidden transition-shadow hover:shadow-md">
-        {/* Thumbnail */}
-        <div className="relative aspect-video w-full overflow-hidden border-b border-border bg-surface-elevated">
+        {/* Thumbnail (click navigates to the project detail page) */}
+        <Link
+          to={`/projects/${project.id}`}
+          className="relative block aspect-video w-full overflow-hidden border-b border-border bg-surface-elevated"
+          aria-label={`Open ${project.name}`}
+        >
           {project.thumbnail_url ? (
             <img
               src={project.thumbnail_url}
@@ -114,11 +119,11 @@ export function ProjectCard({ project }: ProjectCardProps) {
               archived
             </span>
           ) : null}
-        </div>
+        </Link>
 
         {/* Body */}
         <div className="flex items-start justify-between gap-2 p-4">
-          <div className="min-w-0">
+          <Link to={`/projects/${project.id}`} className="min-w-0">
             <h3 className="truncate font-medium text-text-primary">
               {project.name}
             </h3>
@@ -130,7 +135,7 @@ export function ProjectCard({ project }: ProjectCardProps) {
             <p className="mt-1 text-xs text-text-muted">
               Last activity {formatRelative(lastActivity)}
             </p>
-          </div>
+          </Link>
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
