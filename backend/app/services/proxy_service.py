@@ -15,6 +15,7 @@ from __future__ import annotations
 import asyncio
 import codecs
 import ipaddress
+import json
 import re
 import socket
 from dataclasses import dataclass
@@ -359,20 +360,240 @@ def _rewrite_css_urls(css: str, base_url: str) -> str:
 _META_REFRESH_URL_RE = re.compile(r"(url\s*=\s*)(['\"]?)([^'\";]+)\2", re.IGNORECASE)
 
 
-def rewrite_html(html: str, base_url: str) -> str:
+# --- Pin agent injection ----------------------------------------------------
+
+# Injected verbatim before </body> of every proxied page. The document runs at
+# an OPAQUE origin (CSP `sandbox allow-scripts`, no allow-same-origin), so this
+# script can render the page and talk to window.parent via postMessage, but
+# cannot reach our backend, cookies, or storage. It strictly accepts messages
+# only from window.parent. The parent validates event.source === the iframe.
+# `__RD_PAGE_URL_JSON__` is replaced at injection time with the real page URL.
+_AGENT_SCRIPT_TEMPLATE = r"""
+(function () {
+  "use strict";
+  var PAGE_URL = __RD_PAGE_URL_JSON__;
+  var parentWin = window.parent;
+  if (!parentWin || parentWin === window) return;
+
+  var mode = "browse";
+  var pins = [];
+  var container = null;
+  var STATUS_COLORS = { open: "#EF4444", in_progress: "#F59E0B", resolved: "#22C55E" };
+  var Z = "2147483646";
+
+  function post(msg) { try { parentWin.postMessage(msg, "*"); } catch (e) {} }
+  function host(u) { try { return new URL(u).host; } catch (e) { return ""; } }
+  function bareHost(h) { h = (h || "").toLowerCase(); return h.indexOf("www.") === 0 ? h.slice(4) : h; }
+  function sameHost(a, b) { return bareHost(a) === bareHost(b); }
+  function esc(s) {
+    if (window.CSS && CSS.escape) return CSS.escape(s);
+    return String(s).replace(/[^a-zA-Z0-9_-]/g, "\\$&").replace(/^([0-9])/, "\\3$1 ");
+  }
+
+  function selectorFor(el) {
+    if (!el || el.nodeType !== 1) return null;
+    if (el.id) return "#" + esc(el.id);
+    var parts = [], node = el, depth = 0, rooted = false;
+    while (node && node.nodeType === 1 && node !== document.body) {
+      if (node.id) { parts.unshift("#" + esc(node.id)); rooted = true; break; }
+      if (depth >= 8) break; // too deep: an unanchored chain could match elsewhere
+      var idx = 1, sib = node;
+      while ((sib = sib.previousElementSibling)) {
+        if (sib.tagName === node.tagName) idx++;
+      }
+      parts.unshift(node.localName + ":nth-of-type(" + idx + ")");
+      node = node.parentElement; depth++;
+    }
+    if (node === document.body) rooted = true;
+    // Truncated (not rooted at an id or body) -> drop the selector and let the
+    // pin fall back to absolute coordinates rather than risk a wrong element.
+    if (!rooted) return null;
+    return parts.join(" > ") || el.localName;
+  }
+
+  function pct(client, start, size) {
+    if (!size) return null;
+    var v = ((client - start) / size) * 100;
+    return Math.max(0, Math.min(100, Math.round(v * 100) / 100));
+  }
+
+  function onClick(e) {
+    var t = e.target;
+    var pin = t && t.closest ? t.closest("[data-rd-pin]") : null;
+    if (pin) {
+      e.preventDefault(); e.stopPropagation();
+      post({ type: "rd:pin-click", id: pin.getAttribute("data-rd-pin") });
+      return;
+    }
+    if (mode === "comment") {
+      e.preventDefault(); e.stopPropagation();
+      var rect = t && t.getBoundingClientRect ? t.getBoundingClientRect() : null;
+      post({
+        type: "rd:click",
+        selector: selectorFor(t),
+        percentX: rect ? pct(e.clientX, rect.left, rect.width) : null,
+        percentY: rect ? pct(e.clientY, rect.top, rect.height) : null,
+        absX: Math.round(e.pageX),
+        absY: Math.round(e.pageY),
+        clientX: Math.round(e.clientX),
+        clientY: Math.round(e.clientY),
+        viewportWidth: window.innerWidth,
+        viewportHeight: window.innerHeight,
+        pageUrl: PAGE_URL
+      });
+      return;
+    }
+    var a = t && t.closest ? t.closest("a[href]") : null;
+    if (a && a.getAttribute("href")) {
+      var u;
+      try { u = new URL(a.href, location.href); } catch (err) { return; }
+      if (u.protocol !== "http:" && u.protocol !== "https:") return;
+      e.preventDefault(); e.stopPropagation();
+      if (sameHost(u.host, host(PAGE_URL))) {
+        post({ type: "rd:navigate", path: u.pathname + u.search + u.hash });
+      }
+      // cross-host links stay disabled (kept on the project's site)
+    }
+  }
+
+  function ensureContainer() {
+    if (container && container.parentNode) return container;
+    container = document.createElement("div");
+    container.setAttribute("data-rd-pins", "");
+    container.style.cssText = "position:absolute;top:0;left:0;width:0;height:0;margin:0;padding:0;border:0;pointer-events:none;z-index:" + Z + ";";
+    document.body.appendChild(container);
+    return container;
+  }
+  function resolvePos(p) {
+    if (p.selector) {
+      var el = null;
+      try { el = document.querySelector(p.selector); } catch (e) {}
+      if (el) {
+        var r = el.getBoundingClientRect();
+        var fx = (p.percentX == null ? 50 : p.percentX) / 100;
+        var fy = (p.percentY == null ? 50 : p.percentY) / 100;
+        return { x: r.left + window.scrollX + r.width * fx, y: r.top + window.scrollY + r.height * fy };
+      }
+    }
+    if (typeof p.absX === "number" && typeof p.absY === "number") {
+      return { x: p.absX, y: p.absY };
+    }
+    return null;
+  }
+  function renderPins() {
+    var c = ensureContainer();
+    while (c.firstChild) c.removeChild(c.firstChild);
+    // The container is position:absolute; if <body>/<html> establishes a
+    // containing block (position/transform), its origin isn't the document
+    // origin — measure it and convert page coords into container-local coords.
+    var crect = c.getBoundingClientRect();
+    var originX = crect.left + window.scrollX;
+    var originY = crect.top + window.scrollY;
+    var unplaced = [];
+    for (var i = 0; i < pins.length; i++) {
+      var p = pins[i], pos = resolvePos(p);
+      if (!pos) { unplaced.push(p.id); continue; }
+      var d = document.createElement("div");
+      d.setAttribute("data-rd-pin", p.id);
+      var color = STATUS_COLORS[p.status] || STATUS_COLORS.open;
+      d.style.cssText = "position:absolute;left:" + (pos.x - originX) + "px;top:" + (pos.y - originY) + "px;transform:translate(-50%,-50%);width:24px;height:24px;border-radius:9999px;background:" + color + ";color:#fff;font:600 12px/22px -apple-system,BlinkMacSystemFont,system-ui,sans-serif;text-align:center;box-shadow:0 1px 4px rgba(0,0,0,.35);border:2px solid #fff;pointer-events:auto;cursor:pointer;user-select:none;box-sizing:border-box;";
+      d.textContent = String(p.number);
+      c.appendChild(d);
+    }
+    if (unplaced.length) post({ type: "rd:unplaced", ids: unplaced });
+  }
+
+  function onMessage(e) {
+    if (e.source !== parentWin) return;
+    var d = e.data;
+    if (!d || typeof d.type !== "string") return;
+    if (d.type === "rd:set-mode") {
+      mode = d.mode === "comment" ? "comment" : "browse";
+      document.documentElement.style.cursor = mode === "comment" ? "crosshair" : "";
+    } else if (d.type === "rd:render-pins") {
+      pins = Array.isArray(d.pins) ? d.pins : [];
+      renderPins();
+    } else if (d.type === "rd:focus-pin") {
+      if (!container) return;
+      var sel = '[data-rd-pin="' + String(d.id).replace(/"/g, '\\"') + '"]';
+      var el = container.querySelector(sel);
+      if (el && el.scrollIntoView) el.scrollIntoView({ block: "center", behavior: "smooth" });
+    }
+  }
+
+  var rt = null;
+  function onResize() { if (rt) clearTimeout(rt); rt = setTimeout(renderPins, 150); }
+  function docHeight() {
+    var b = document.body, h = document.documentElement;
+    return Math.max(b ? b.scrollHeight : 0, h ? h.scrollHeight : 0);
+  }
+  function init() {
+    // Listen on window (capture) so we sit above any document-level capture
+    // handler the target site installed.
+    window.addEventListener("click", onClick, true);
+    window.addEventListener("message", onMessage);
+    window.addEventListener("resize", onResize);
+    post({ type: "rd:ready", pageUrl: PAGE_URL, docHeight: docHeight() });
+  }
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", init);
+  } else {
+    init();
+  }
+})();
+"""
+
+
+def _build_agent_script(page_url: str) -> str:
+    # Embed the URL as a JS string literal. json.dumps handles quotes/backslashes
+    # but NOT </script> breakout or the U+2028/U+2029 line separators that are
+    # legal in JSON but terminate a JS string — escape those so a hostile
+    # final_url (e.g. via a crafted redirect) can't inject script.
+    safe = (
+        json.dumps(page_url)
+        .replace("<", "\\u003c")
+        .replace(" ", "\\u2028")
+        .replace(" ", "\\u2029")
+    )
+    return _AGENT_SCRIPT_TEMPLATE.replace("__RD_PAGE_URL_JSON__", safe)
+
+
+def _inject_agent(html: str, page_url: str) -> str:
+    """Insert the pin-agent <script> immediately before </body> (verbatim, so
+    the JS is never HTML-escaped). Falls back to appending at the end."""
+    script = "<script>" + _build_agent_script(page_url) + "</script>"
+    idx = html.lower().rfind("</body>")
+    if idx != -1:
+        return html[:idx] + script + html[idx:]
+    return html + script
+
+
+def rewrite_html(html: str, base_url: str, *, inject_agent: bool = False) -> str:
     """Rewrite every relative URL in an HTML document to absolute.
 
     Covers src/href/action/formaction/data-src/poster/xlink:href, <object data>,
     srcset/data-srcset/imagesrcset, inline style attributes, <style> blocks
     (url() and @import), and meta-refresh redirects. Honours and removes any
-    <base href> tag. Script bodies are never touched.
+    <base href> tag. Script bodies are never touched. When ``inject_agent`` is
+    set, the pin-agent script is appended before </body>.
     """
+    page_url = base_url  # the document's real URL, before any <base href> override
     soup = BeautifulSoup(html, HTML_PARSER)
 
     base_tag = soup.find("base", href=True)
     if base_tag is not None:
         base_url = urljoin(base_url, base_tag["href"])
         base_tag.decompose()
+
+    # Strip the target's own meta CSP / frame-busting so they can't block the
+    # injected agent or re-assert framing limits (response headers are already
+    # rebuilt fresh by the route).
+    for meta in soup.find_all("meta"):
+        if (meta.get("http-equiv") or "").lower() in (
+            "content-security-policy",
+            "x-frame-options",
+        ):
+            meta.decompose()
 
     for tag in soup.find_all(True):
         for attr in URL_ATTRS:
@@ -402,16 +623,38 @@ def rewrite_html(html: str, base_url: str) -> str:
                 _rewrite_css_urls(str(style_tag.string), base_url)
             )
 
-    return str(soup)
+    result = str(soup)
+    if inject_agent:
+        result = _inject_agent(result, page_url)
+    return result
 
 
 # --- Fetching ----------------------------------------------------------------
 
 
+def _host_matches(a: str | None, b: str | None) -> bool:
+    """Case-insensitive, www-insensitive host comparison."""
+    if not a or not b:
+        return False
+
+    def bare(h: str) -> str:
+        h = h.lower()
+        return h[4:] if h.startswith("www.") else h
+
+    return bare(a) == bare(b)
+
+
 async def fetch_target(
-    url: str, *, transport: httpx.AsyncBaseTransport | None = None
+    url: str,
+    *,
+    transport: httpx.AsyncBaseTransport | None = None,
+    restrict_to_host: str | None = None,
 ) -> tuple[bytes, int, str, str]:
     """Fetch ``url`` and return ``(body, status_code, content_type, final_url)``.
+
+    When ``restrict_to_host`` is set, EVERY hop (incl. redirect targets) must
+    stay on that host — closing the open-proxy-via-redirect hole for the public
+    guest endpoint.
 
     Enforces a per-operation timeout and an overall wall-clock budget, follows
     up to ``MAX_REDIRECTS`` redirects manually, and on every hop resolves +
@@ -430,6 +673,10 @@ async def fetch_target(
             ) as client:
                 for _hop in range(MAX_REDIRECTS + 1):
                     parsed = urlparse(current_url)
+                    if restrict_to_host is not None and not _host_matches(
+                        parsed.hostname, restrict_to_host
+                    ):
+                        raise BlockedURLError("Redirected off the allowed host")
                     pinned_ip = await resolve_and_validate(current_url)
                     connect_url, host_header, sni = _build_pinned_request(
                         parsed, pinned_ip
@@ -510,16 +757,20 @@ def _looks_like_html(body: bytes) -> bool:
 
 
 async def fetch_and_rewrite(
-    url: str, *, transport: httpx.AsyncBaseTransport | None = None
+    url: str,
+    *,
+    transport: httpx.AsyncBaseTransport | None = None,
+    restrict_to_host: str | None = None,
 ) -> ProxiedPage:
     """Fetch a page and prepare it for iframe embedding.
 
     HTML responses are decoded (BOM, then header charset, then meta charset,
     then UTF-8), rewritten, and re-encoded as UTF-8. Anything else passes
-    through untouched. Upstream status codes are preserved.
+    through untouched. Upstream status codes are preserved. ``restrict_to_host``
+    pins every redirect hop to a single host.
     """
     body, status_code, content_type, final_url = await fetch_target(
-        url, transport=transport
+        url, transport=transport, restrict_to_host=restrict_to_host
     )
     bare_type = content_type.split(";")[0].strip().lower()
     is_html = bare_type in HTML_CONTENT_TYPES or (
@@ -528,7 +779,7 @@ async def fetch_and_rewrite(
     if is_html:
         encoding = _detect_encoding(content_type, body)
         html = body.decode(encoding, errors="replace")
-        rewritten = rewrite_html(html, final_url)
+        rewritten = rewrite_html(html, final_url, inject_agent=True)
         return ProxiedPage(
             content=rewritten.encode("utf-8"),
             status_code=status_code,

@@ -11,12 +11,23 @@ import secrets
 import string
 import uuid
 from datetime import datetime, timezone
+from urllib.parse import urljoin, urlparse
 
-from fastapi import APIRouter, Depends, HTTPException, Response, status
+from fastapi import (
+    APIRouter,
+    Depends,
+    HTTPException,
+    Query,
+    Request,
+    Response,
+    status,
+)
+from slowapi.util import get_remote_address
 from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import get_current_user, get_db
+from app.api.deps import get_current_user, get_db, limiter
+from app.api.routes.proxy import _PROXY_RESPONSE_HEADERS, _hostnames_match
 from app.models.comment import Comment
 from app.models.guest import GuestSession
 from app.models.project import Project
@@ -31,10 +42,12 @@ from app.schemas.review import (
     ReviewRead,
     ReviewUpdate,
 )
+from app.services import proxy_service
 
 router = APIRouter(tags=["reviews"])
 
 FREE_REVIEWS_PER_PROJECT = 1  # CLAUDE.md Section 9 (plan limits)
+REVIEW_PAGE_RATE_LIMIT = "60/minute"  # per IP (CLAUDE.md Section 13)
 _SLUG_ALPHABET = string.ascii_letters + string.digits  # nanoid-style, URL-safe
 _SLUG_LENGTH = 8
 
@@ -245,3 +258,62 @@ async def create_guest_session(
     db.add(guest)
     await db.commit()
     return GuestSessionTokenRead(session_token=token)
+
+
+@router.get("/r/{slug}/page")
+@limiter.limit(REVIEW_PAGE_RATE_LIMIT, key_func=get_remote_address)
+async def get_public_review_page(
+    request: Request,
+    slug: str,
+    path: str = Query(default="", description="Same-host path under the project URL"),
+    db: AsyncSession = Depends(get_db),
+) -> Response:
+    """Render the review's target site for the guest canvas.
+
+    Guests never pass arbitrary URLs: the slug fixes the project, and ``path``
+    may only navigate within the SAME host as the project URL. Proxied through
+    the hardened, SSRF-protected pipeline; served with the sandbox CSP and the
+    injected pin-agent.
+    """
+    _review, project = await _resolve_public_review(db, slug)
+
+    target = urljoin(project.url, path) if path else project.url
+    if not _hostnames_match(urlparse(target).hostname, urlparse(project.url).hostname):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Path must stay on the project's site",
+        )
+
+    try:
+        page = await proxy_service.fetch_and_rewrite(
+            target, restrict_to_host=urlparse(project.url).hostname
+        )
+    except proxy_service.BlockedURLError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail=exc.detail
+        ) from exc
+    except proxy_service.ProxyError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
+
+    return Response(
+        content=page.content,
+        status_code=page.status_code,
+        media_type=page.content_type,
+        headers=dict(_PROXY_RESPONSE_HEADERS),
+    )
+
+
+@router.get("/reviews/{review_id}", response_model=GuestCanvasData)
+async def get_review_detail(
+    review_id: uuid.UUID,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> GuestCanvasData:
+    """Owner-scoped review + project, so the designer canvas can resolve the
+    target site (and slug) from just the review id."""
+    review = await _get_owned_review(db, current_user, review_id)
+    project = await db.scalar(select(Project).where(Project.id == review.project_id))
+    return GuestCanvasData(
+        review=ReviewRead.model_validate(review),
+        project=ProjectRead.model_validate(project),
+    )

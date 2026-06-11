@@ -334,6 +334,49 @@ async def test_redirect_followed_and_revalidated(monkeypatch):
 
 
 @pytest.mark.asyncio
+async def test_restrict_to_host_blocks_offhost_redirect(monkeypatch):
+    _patch_dns(
+        monkeypatch,
+        {"example.com": ["93.184.216.34"], "evil.com": ["93.184.216.35"]},
+    )
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.host == "93.184.216.34":
+            return httpx.Response(302, headers={"location": "https://evil.com/x"})
+        return httpx.Response(
+            200, headers={"content-type": "text/html"}, text="<html>ok</html>"
+        )
+
+    with pytest.raises(BlockedURLError):
+        await fetch_and_rewrite(
+            "https://example.com/",
+            transport=_transport(handler),
+            restrict_to_host="example.com",
+        )
+
+
+@pytest.mark.asyncio
+async def test_restrict_to_host_allows_samehost_redirect(monkeypatch):
+    _patch_dns(monkeypatch, {"example.com": ["93.184.216.34"]})
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path == "/":
+            return httpx.Response(
+                302, headers={"location": "https://example.com/final"}
+            )
+        return httpx.Response(
+            200, headers={"content-type": "text/html"}, text="<html>ok</html>"
+        )
+
+    page = await fetch_and_rewrite(
+        "https://example.com/",
+        transport=_transport(handler),
+        restrict_to_host="example.com",
+    )
+    assert b"ok" in page.content
+
+
+@pytest.mark.asyncio
 async def test_redirect_to_private_ip_blocked(monkeypatch):
     _patch_dns(monkeypatch, {"example.com": ["93.184.216.34"]})
 

@@ -17,6 +17,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user, get_db, limiter
+from app.core.config import settings
 from app.models.project import Project
 from app.models.user import User
 from app.services import proxy_service
@@ -25,12 +26,24 @@ router = APIRouter(tags=["proxy"])
 
 PROXY_RATE_LIMIT = "60/minute"  # per user (CLAUDE.md Section 13)
 
+# frame-ancestors must be an origin (scheme://host[:port]); FRONTEND_URL may
+# carry a path, so reduce it to its origin.
+_frontend = urlparse(settings.FRONTEND_URL)
+_FRONTEND_ORIGIN = f"{_frontend.scheme}://{_frontend.netloc}"
+
 # Fresh response headers — nothing is forwarded from the target, so its
 # X-Frame-Options / CSP frame-ancestors / Set-Cookie never reach the client.
-# `sandbox allow-scripts` (no allow-same-origin) gives proxied JS an opaque
-# origin: it can render the page but can't touch our API, cookies, or storage.
+# `sandbox allow-scripts` (NO allow-same-origin) gives the proxied document an
+# OPAQUE origin: the injected pin-agent + site JS run for rendering and can
+# postMessage the parent, but cannot reach our backend origin, cookies, or
+# storage. Trade-off: a target's own same-origin API/storage calls fail under
+# an opaque origin — acceptable for v1 (the canvas is for visual review).
 _PROXY_RESPONSE_HEADERS = {
-    "Content-Security-Policy": "sandbox allow-scripts allow-forms allow-popups",
+    # sandbox -> opaque inner origin; frame-ancestors -> only OUR frontend may
+    # embed the canvas (so a hostile parent can't drive/read the agent).
+    "Content-Security-Policy": (
+        f"sandbox allow-scripts; frame-ancestors {_FRONTEND_ORIGIN}"
+    ),
     "X-Content-Type-Options": "nosniff",
     "Referrer-Policy": "no-referrer",
     "Cache-Control": "no-store",
