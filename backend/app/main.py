@@ -13,7 +13,7 @@ from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 
 from app.api.deps import limiter
-from app.api.routes import auth, proxy
+from app.api.routes import auth, projects, proxy, reviews
 from app.core.config import settings
 
 app = FastAPI(title=settings.APP_NAME)
@@ -34,6 +34,8 @@ app.add_middleware(
 # API routers (all under /api/v1 per Section 8).
 app.include_router(auth.router, prefix="/api/v1")
 app.include_router(proxy.router, prefix="/api/v1")
+app.include_router(projects.router, prefix="/api/v1")
+app.include_router(reviews.router, prefix="/api/v1")
 
 
 @app.get("/health", tags=["health"])
