@@ -28,6 +28,12 @@ const nextTempId = () => `temp-${Date.now()}-${(tempIdCounter += 1)}`;
 
 const guestHeaders = (token: string) => ({ headers: { "X-Guest-Token": token } });
 
+// The slug itself is the access credential (CLAUDE.md Section 9), so reads work
+// without a token; only attach the header when we actually have one, so a
+// first-time visitor's request stays cleanly tokenless.
+const optionalGuestHeaders = (token: string | null) =>
+  token ? guestHeaders(token) : undefined;
+
 /* -------- designer surface -------- */
 
 export function useReviewComments(
@@ -63,6 +69,68 @@ export function useUpdateCommentStatus(reviewId: string) {
         old?.map((c) =>
           c.id === vars.commentId ? { ...c, status: vars.status } : c,
         ),
+      );
+      return { previous };
+    },
+    onError: (_err, _vars, ctx) => {
+      if (ctx?.previous) qc.setQueryData(key, ctx.previous);
+    },
+    onSettled: () => {
+      void qc.invalidateQueries({ queryKey: key });
+    },
+  });
+}
+
+export interface CreateDesignerCommentVars {
+  payload: CommentCreatePayload;
+  /** The designer's display name, for the optimistic placeholder. */
+  displayName: string | null;
+}
+
+export function useCreateDesignerComment(reviewId: string) {
+  const qc = useQueryClient();
+  const key = commentKeys.review(reviewId);
+  return useMutation({
+    mutationFn: async ({ payload }: CreateDesignerCommentVars) => {
+      const { data } = await api.post<CanvasComment>(
+        `/reviews/${reviewId}/comments`,
+        payload,
+      );
+      return data;
+    },
+    onMutate: async ({ payload, displayName }: CreateDesignerCommentVars) => {
+      await qc.cancelQueries({ queryKey: key });
+      const previous = qc.getQueryData<CanvasComment[]>(key);
+      const now = new Date().toISOString();
+      const optimistic: CanvasComment = {
+        id: nextTempId(),
+        review_id: reviewId,
+        parent_id: null,
+        author_user_id: "self",
+        author_guest_id: null,
+        author_name: displayName ?? "You",
+        author_type: "designer",
+        is_mine: true,
+        body: payload.body,
+        status: "open",
+        page_url: payload.page_url,
+        pin_x_percent: payload.pin_x_percent,
+        pin_y_percent: payload.pin_y_percent,
+        element_selector: payload.element_selector,
+        viewport_width: payload.viewport_width,
+        viewport_height: payload.viewport_height,
+        pin_x_absolute: payload.pin_x_absolute,
+        pin_y_absolute: payload.pin_y_absolute,
+        region_width: payload.region_width,
+        region_height: payload.region_height,
+        region_width_percent: payload.region_width_percent,
+        region_height_percent: payload.region_height_percent,
+        screenshot_url: null,
+        created_at: now,
+        updated_at: now,
+      };
+      qc.setQueryData<CanvasComment[]>(key, (old) =>
+        old ? [...old, optimistic] : [optimistic],
       );
       return { previous };
     },
@@ -124,15 +192,18 @@ export function useGuestComments(
   token: string | null,
 ): UseQueryResult<CanvasComment[]> {
   return useQuery({
-    queryKey: commentKeys.guest(slug),
+    // Token is part of the key so the list refetches (and is_mine resolves)
+    // once a first-time visitor names themselves and gets a session.
+    queryKey: [...commentKeys.guest(slug), token],
     queryFn: async () => {
       const { data } = await api.get<CanvasComment[]>(
         `/r/${slug}/comments`,
-        guestHeaders(token as string),
+        optionalGuestHeaders(token),
       );
       return data;
     },
-    enabled: slug.length > 0 && token !== null,
+    // Fetch immediately, with or without a token, so pins render on first load.
+    enabled: slug.length > 0,
   });
 }
 
@@ -144,7 +215,6 @@ export interface CreateGuestCommentVars {
 
 export function useCreateGuestComment(slug: string) {
   const qc = useQueryClient();
-  const key = commentKeys.guest(slug);
   return useMutation({
     mutationFn: async ({ payload, token }: CreateGuestCommentVars) => {
       const { data } = await api.post<CanvasComment>(
@@ -154,7 +224,9 @@ export function useCreateGuestComment(slug: string) {
       );
       return data;
     },
-    onMutate: async ({ payload, displayName }: CreateGuestCommentVars) => {
+    onMutate: async ({ payload, token, displayName }: CreateGuestCommentVars) => {
+      // Target the token-scoped cache entry that the live list query uses.
+      const key = [...commentKeys.guest(slug), token];
       await qc.cancelQueries({ queryKey: key });
       const previous = qc.getQueryData<CanvasComment[]>(key);
       const now = new Date().toISOString();
@@ -188,13 +260,14 @@ export function useCreateGuestComment(slug: string) {
       qc.setQueryData<CanvasComment[]>(key, (old) =>
         old ? [...old, optimistic] : [optimistic],
       );
-      return { previous };
+      return { previous, key };
     },
     onError: (_err, _vars, ctx) => {
-      if (ctx?.previous) qc.setQueryData(key, ctx.previous);
+      if (ctx?.previous && ctx.key) qc.setQueryData(ctx.key, ctx.previous);
     },
     onSettled: () => {
-      void qc.invalidateQueries({ queryKey: key });
+      // Prefix match invalidates every token variant of this slug's list.
+      void qc.invalidateQueries({ queryKey: commentKeys.guest(slug) });
     },
   });
 }

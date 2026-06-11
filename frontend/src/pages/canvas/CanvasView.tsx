@@ -3,20 +3,21 @@
  *
  * Loads the project site through the AUTHENTICATED proxy (fetched via axios and
  * handed to the iframe as srcDoc, because an iframe can't send a Bearer header),
- * renders the client's pins, and lets the designer browse/triage. Comment
- * CREATION is a guest-only flow (the comments API has no designer top-level
- * create endpoint); here Comment mode just freezes the site for clean pin
- * interaction.
+ * renders the client's pins, and lets the designer browse/triage. In Comment
+ * mode the designer can also drop their own top-level pins (click or region
+ * drag) via NewCommentPopover → POST /reviews/{id}/comments, authored as the
+ * designer.
  */
 
 import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, ExternalLink, Link2, MessageSquare } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { toast } from "sonner";
 
 import { CanvasFrame } from "@/components/canvas/CanvasFrame";
 import { CommentThread } from "@/components/canvas/CommentThread";
+import { NewCommentPopover } from "@/components/canvas/NewCommentPopover";
 import {
   numberCommentsForPage,
   repliesOf,
@@ -26,7 +27,9 @@ import { StatusBadge } from "@/components/dashboard/StatusBadge";
 import { LoadingSpinner } from "@/components/shared/LoadingSpinner";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useAuth } from "@/hooks/useAuth";
 import {
+  useCreateDesignerComment,
   useDeleteComment,
   useReplyToComment,
   useReviewComments,
@@ -35,7 +38,7 @@ import {
 import api from "@/lib/api";
 import { cn } from "@/lib/utils";
 import type { CommentStatus, Project, Review } from "@/types";
-import type { CanvasMode } from "@/types/canvas";
+import type { CanvasClickCoords, CanvasMode } from "@/types/canvas";
 
 interface ReviewDetail {
   review: Review;
@@ -51,6 +54,7 @@ const STATUS_FILTERS: Array<{ value: CommentStatus | "all"; label: string }> = [
 
 export default function CanvasView() {
   const { reviewId = "" } = useParams<{ reviewId: string }>();
+  const { user } = useAuth();
 
   const detailQuery = useQuery({
     queryKey: ["review-detail", reviewId],
@@ -73,6 +77,11 @@ export default function CanvasView() {
   const [showResolved, setShowResolved] = useState(false);
   const [statusFilter, setStatusFilter] = useState<CommentStatus | "all">("all");
   const [unplacedCount, setUnplacedCount] = useState(0);
+  const [pendingCoords, setPendingCoords] = useState<CanvasClickCoords | null>(
+    null,
+  );
+
+  const canvasRef = useRef<HTMLElement>(null);
 
   const proxyQuery = useQuery({
     queryKey: ["proxy", currentUrl],
@@ -93,6 +102,18 @@ export default function CanvasView() {
   const updateStatus = useUpdateCommentStatus(reviewId);
   const reply = useReplyToComment(reviewId);
   const remove = useDeleteComment(reviewId);
+  const createComment = useCreateDesignerComment(reviewId);
+
+  // Position the new-comment popover in the parent's coordinate space (canvas
+  // rect + the click point reported from inside the iframe).
+  const newCommentAnchor = useMemo(() => {
+    if (!pendingCoords) return { x: 0, y: 0 };
+    const rect = canvasRef.current?.getBoundingClientRect();
+    return {
+      x: (rect?.left ?? 0) + pendingCoords.clientX,
+      y: (rect?.top ?? 0) + pendingCoords.clientY,
+    };
+  }, [pendingCoords]);
 
   const matchUrl = pageUrl ?? currentUrl ?? "";
   const numbered = useMemo(
@@ -139,6 +160,7 @@ export default function CanvasView() {
     if (!currentUrl) return;
     try {
       setFocusedId(null);
+      setPendingCoords(null);
       setUnplacedCount(0);
       setCurrentUrl(new URL(path, currentUrl).toString());
     } catch {
@@ -238,7 +260,7 @@ export default function CanvasView() {
 
       <div className="flex min-h-0 flex-1">
         {/* canvas */}
-        <main className="relative min-w-0 flex-1 bg-surface-elevated">
+        <main ref={canvasRef} className="relative min-w-0 flex-1 bg-surface-elevated">
           {proxyQuery.isLoading ? (
             <div className="flex h-full items-center justify-center">
               <LoadingSpinner />
@@ -271,10 +293,35 @@ export default function CanvasView() {
                 setUnplacedCount(0);
               }}
               onNavigate={handleNavigate}
-              onPinClick={(id) => setFocusedId(id)}
+              onPinClick={(id) => {
+                setPendingCoords(null);
+                setFocusedId(id);
+              }}
               onUnplaced={(ids) => setUnplacedCount(ids.length)}
+              onCanvasClick={(coords) => {
+                // Comment mode only fires this (the agent gates rd:click on
+                // mode); drop any open thread and start a new comment here.
+                setFocusedId(null);
+                setPendingCoords(coords);
+              }}
             />
           )}
+
+          {pendingCoords ? (
+            <NewCommentPopover
+              coords={pendingCoords}
+              anchor={newCommentAnchor}
+              pending={createComment.isPending}
+              onCancel={() => setPendingCoords(null)}
+              onSubmit={(payload) => {
+                createComment.mutate({
+                  payload,
+                  displayName: user?.full_name ?? null,
+                });
+                setPendingCoords(null);
+              }}
+            />
+          ) : null}
 
           {focused ? (
             <CommentThread

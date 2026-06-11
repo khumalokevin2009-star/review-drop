@@ -2,9 +2,11 @@
  * ReviewPage — the public guest canvas (/r/:slug). No auth, no sidebar.
  *
  * Loads the target site via the public page endpoint (iframe src, since it
- * needs no Bearer header). Guests click to drop pins; on the first comment
- * SUBMIT (not page load) a name-capture modal appears, then the pending comment
- * is sent. Existing pins load once the guest has a session token.
+ * needs no Bearer header). Existing pins load immediately on page load — the
+ * unguessable slug is the access credential (CLAUDE.md Section 9), so no token
+ * is needed to READ. Guests click to drop pins; only on the first comment
+ * SUBMIT (not page load) does a name-capture modal appear, then the pending
+ * comment is sent and subsequent reads carry the new token (flagging is_mine).
  */
 
 import { zodResolver } from "@hookform/resolvers/zod";

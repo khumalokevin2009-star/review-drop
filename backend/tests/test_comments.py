@@ -280,6 +280,66 @@ async def test_cross_review_token_rejected(client, auth, session_factory):
     assert ok.status_code == 201
 
 
+# --- designer top-level create ----------------------------------------------
+
+
+async def test_designer_creates_top_level_comment(client, auth, session_factory):
+    user, project, review = await _setup_review(client, auth, session_factory)
+
+    # designer drops their own pin (region payload, exercising the region fields)
+    created = await client.post(
+        f"/api/v1/reviews/{review['id']}/comments", json=REGION_PIN
+    )
+    assert created.status_code == 201, created.text
+    body = created.json()
+    for key, value in REGION_PIN.items():
+        assert body[key] == value, key
+    assert body["status"] == "open"
+    assert body["screenshot_url"] is None
+    assert body["parent_id"] is None
+    # authored as the designer, not a guest
+    assert body["author_user_id"] is not None
+    assert body["author_guest_id"] is None
+    assert body["author_type"] == "designer"
+    assert body["author_name"] == user.full_name
+
+    # round-trips through both designer list endpoints with region dims intact
+    for url in (
+        f"/api/v1/reviews/{review['id']}/comments",
+        f"/api/v1/projects/{project.id}/comments",
+    ):
+        listed = (await client.get(url)).json()
+        assert len(listed) == 1
+        for key, value in REGION_FIELDS.items():
+            assert listed[0][key] == value, key
+
+    # ...and a guest reading the review sees the designer's pin too
+    token = await _guest_token(client, auth, review["slug"])
+    guest_view = (
+        await client.get(f"/api/v1/r/{review['slug']}/comments", headers=_h(token))
+    ).json()
+    assert [c["body"] for c in guest_view] == [REGION_PIN["body"]]
+    # not the guest's own comment
+    assert guest_view[0]["is_mine"] is False
+
+
+async def test_designer_create_requires_ownership(client, auth, session_factory):
+    _, _, review = await _setup_review(client, auth, session_factory)
+
+    # a different designer cannot post to this review (scoped through project)
+    other = await make_user(session_factory, "free")
+    auth.user = other
+    forbidden = await client.post(
+        f"/api/v1/reviews/{review['id']}/comments",
+        json={"body": "not mine", "page_url": PAGE},
+    )
+    assert forbidden.status_code == 404
+    # and nothing was written
+    auth.user = None
+    listed = (await client.get(f"/api/v1/r/{review['slug']}/comments")).json()
+    assert listed == []
+
+
 # --- guest visibility (sees all, is_mine flags own) -------------------------
 
 
@@ -309,6 +369,83 @@ async def test_guest_sees_all_with_is_mine(client, auth, session_factory):
     # author names surface for the designer's benefit
     names = {c["body"]: c["author_name"] for c in view_a}
     assert names == {"from A": "Alice", "from B": "Bob"}
+
+
+# --- tokenless guest read (slug is the credential, Section 9) ----------------
+
+
+async def test_guest_list_without_token_sees_all_is_mine_false(
+    client, auth, session_factory
+):
+    user, _, review = await _setup_review(client, auth, session_factory)
+    slug = review["slug"]
+    # seed two comments from two different guests
+    token_a = await _guest_token(client, auth, slug, name="Alice")
+    token_b = await _guest_token(client, auth, slug, name="Bob")
+    auth.user = None
+    for tok, label in ((token_a, "from A"), (token_b, "from B")):
+        await client.post(
+            f"/api/v1/r/{slug}/comments",
+            headers=_h(tok),
+            json={"body": label, "page_url": PAGE},
+        )
+
+    # a first-time visitor with NO token still sees every pin...
+    r = await client.get(f"/api/v1/r/{slug}/comments")
+    assert r.status_code == 200, r.text
+    view = r.json()
+    assert {c["body"] for c in view} == {"from A", "from B"}
+    # ...and owns none of them
+    assert all(c["is_mine"] is False for c in view)
+    # author names still surface
+    assert {c["body"]: c["author_name"] for c in view} == {
+        "from A": "Alice",
+        "from B": "Bob",
+    }
+
+
+async def test_guest_list_tokenless_applies_review_state(
+    client, auth, session_factory
+):
+    user, _, review = await _setup_review(client, auth, session_factory)
+    slug = review["slug"]
+
+    # unknown slug -> 404 even without a token
+    assert (await client.get("/api/v1/r/nonexistent/comments")).status_code == 404
+
+    # inactive review -> 403 even without a token
+    auth.user = user
+    await client.patch(f"/api/v1/reviews/{review['id']}", json={"is_active": False})
+    auth.user = None
+    assert (await client.get(f"/api/v1/r/{slug}/comments")).status_code == 403
+
+
+async def test_guest_list_rejects_bad_and_cross_review_tokens(
+    client, auth, session_factory
+):
+    """A present-but-invalid token is still rejected on read (not silently
+    downgraded to the tokenless path); a cross-review token is forbidden."""
+    pro = await make_user(session_factory, "pro")
+    auth.user = pro
+    p1 = await make_project(session_factory, pro, name="P1")
+    p2 = await make_project(session_factory, pro, name="P2")
+    rev_a = (await client.post(f"/api/v1/projects/{p1.id}/reviews", json={})).json()
+    rev_b = (await client.post(f"/api/v1/projects/{p2.id}/reviews", json={})).json()
+    token_a = await _guest_token(client, auth, rev_a["slug"])
+
+    auth.user = None
+    # garbage token -> 401
+    assert (
+        await client.get(f"/api/v1/r/{rev_a['slug']}/comments", headers=_h("deadbeef"))
+    ).status_code == 401
+    # review A's token used on review B -> 403
+    assert (
+        await client.get(f"/api/v1/r/{rev_b['slug']}/comments", headers=_h(token_a))
+    ).status_code == 403
+    # ...but valid on its own review -> 200
+    assert (
+        await client.get(f"/api/v1/r/{rev_a['slug']}/comments", headers=_h(token_a))
+    ).status_code == 200
 
 
 # --- designer filtering + ownership + soft delete ---------------------------

@@ -263,6 +263,51 @@ async def list_review_comments(
     return [_to_read(c) for c in result.scalars().all()]
 
 
+@router.post(
+    "/reviews/{review_id}/comments",
+    response_model=CommentRead,
+    status_code=status.HTTP_201_CREATED,
+)
+async def create_designer_comment(
+    review_id: uuid.UUID,
+    data: CommentCreate,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> CommentRead:
+    """Designer-authored top-level pinned comment. Owner-scoped through the
+    project; mirrors the guest CommentCreate payload (incl. region fields) but
+    sets author_user_id instead of author_guest_id. Status defaults to open;
+    screenshot_url stays null (filled later by the screenshot service)."""
+    review = await _get_owned_review(db, current_user, review_id)
+    comment = Comment(
+        review_id=review.id,
+        author_user_id=current_user.id,
+        body=data.body,
+        page_url=data.page_url,
+        status="open",
+        pin_x_percent=data.pin_x_percent,
+        pin_y_percent=data.pin_y_percent,
+        element_selector=data.element_selector,
+        viewport_width=data.viewport_width,
+        viewport_height=data.viewport_height,
+        pin_x_absolute=data.pin_x_absolute,
+        pin_y_absolute=data.pin_y_absolute,
+        region_width=data.region_width,
+        region_height=data.region_height,
+        region_width_percent=data.region_width_percent,
+        region_height_percent=data.region_height_percent,
+        browser_name=data.browser_name,
+        browser_version=data.browser_version,
+        os_name=data.os_name,
+        screen_width=data.screen_width,
+        screen_height=data.screen_height,
+    )
+    db.add(comment)
+    await db.commit()
+    await db.refresh(comment)
+    return _to_read(await _load_for_read(db, comment.id))
+
+
 @router.patch("/comments/{comment_id}", response_model=CommentRead)
 async def update_comment_status(
     comment_id: uuid.UUID,
@@ -364,7 +409,27 @@ async def list_guest_comments(
     x_guest_token: str | None = Header(default=None, alias="X-Guest-Token"),
     db: AsyncSession = Depends(get_db),
 ) -> list[CommentRead]:
-    review, guest = await _authenticate_guest(db, slug, x_guest_token)
+    """List a review's comments for the guest canvas. Per CLAUDE.md Section 9
+    the unguessable slug is itself the access credential, so reading the pins
+    does NOT require a token — a first-time visitor sees every comment (with
+    is_mine=False) before naming themselves. A valid token additionally flags
+    the guest's own comments. A present-but-invalid or cross-review token is
+    still rejected (401/403) rather than silently downgraded."""
+    review = await _resolve_active_review(db, slug)
+    guest: GuestSession | None = None
+    if x_guest_token:
+        guest = await db.scalar(
+            select(GuestSession).where(GuestSession.session_token == x_guest_token)
+        )
+        if guest is None:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid guest token"
+            )
+        if guest.review_id != review.id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Guest token is not valid for this review",
+            )
     result = await db.execute(
         select(Comment)
         .options(*_AUTHOR_LOAD)
@@ -372,6 +437,6 @@ async def list_guest_comments(
         .order_by(Comment.created_at.asc())
     )
     return [
-        _to_read(c, is_mine=(c.author_guest_id == guest.id))
+        _to_read(c, is_mine=(guest is not None and c.author_guest_id == guest.id))
         for c in result.scalars().all()
     ]
