@@ -61,6 +61,24 @@ def test_agent_includes_region_selection():
         assert marker in out, marker
 
 
+def test_agent_placement_accuracy_markers():
+    """The injected agent carries the pin-placement accuracy pass: validated
+    selector generation (unique-match proof), stable-class filtering, the
+    inline→block reference walk, and the render-time drift guard."""
+    html = "<html><body></body></html>"
+    out = proxy_service.rewrite_html(html, PAGE_URL, inject_agent=True)
+    for marker in (
+        "matchesUniquely",    # every emitted selector is proven unique
+        "querySelectorAll",   # ...via querySelectorAll at capture AND render
+        "isStableClass",      # utility-ish class names never enter selectors
+        "blockAncestor",      # inline targets anchor to the nearest block box
+        "getComputedStyle",
+        "DRIFT_MAX",          # >40px selector drift falls back to absolute
+        "nth-of-type",        # positional segments still present
+    ):
+        assert marker in out, marker
+
+
 def test_agent_script_url_injection_hardened():
     # A hostile final_url (e.g. via a crafted redirect) must not break out of
     # the injected <script> via </script> in the embedded page URL.

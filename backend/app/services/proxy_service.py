@@ -383,6 +383,10 @@ _AGENT_SCRIPT_TEMPLATE = r"""
   var BRAND = "#6366F1";
   var Z = "2147483646";
   var DRAG_MIN = 6; // px of page-space travel before a press becomes a region
+  // A selector whose resolved position drifts further than this from the
+  // captured absolute coords (in either axis) most likely matches a DIFFERENT
+  // element after a DOM change — fall back to the absolute coords instead.
+  var DRIFT_MAX = 40;
 
   function post(msg) { try { parentWin.postMessage(msg, "*"); } catch (e) {} }
   function host(u) { try { return new URL(u).host; } catch (e) { return ""; } }
@@ -393,33 +397,113 @@ _AGENT_SCRIPT_TEMPLATE = r"""
     return String(s).replace(/[^a-zA-Z0-9_-]/g, "\\$&").replace(/^([0-9])/, "\\3$1 ");
   }
 
-  function selectorFor(el) {
-    if (!el || el.nodeType !== 1) return null;
-    if (el.id) return "#" + esc(el.id);
-    var parts = [], node = el, depth = 0, rooted = false;
-    while (node && node.nodeType === 1 && node !== document.body) {
-      if (node.id) { parts.unshift("#" + esc(node.id)); rooted = true; break; }
-      if (depth >= 8) break; // too deep: an unanchored chain could match elsewhere
-      var idx = 1, sib = node;
-      while ((sib = sib.previousElementSibling)) {
-        if (sib.tagName === node.tagName) idx++;
-      }
-      parts.unshift(node.localName + ":nth-of-type(" + idx + ")");
-      node = node.parentElement; depth++;
-    }
-    if (node === document.body) rooted = true;
-    // Truncated (not rooted at an id or body) -> drop the selector and let the
-    // pin fall back to absolute coordinates rather than risk a wrong element.
-    if (!rooted) return null;
-    return parts.join(" > ") || el.localName;
+  // --- selector generation (validated, anchored, class-aware) ---------------
+
+  // A selector is only emitted if document.querySelectorAll proves it matches
+  // exactly the one element it was built for — never a guess.
+  function matchesUniquely(sel, el) {
+    try {
+      var found = document.querySelectorAll(sel);
+      return found.length === 1 && found[0] === el;
+    } catch (e) { return false; }
   }
 
+  // Utility-ish class names (hashed, generated, atomic-CSS) churn between
+  // builds; only structural-looking names make a selector MORE stable.
+  function isStableClass(cls) {
+    if (!cls || cls.length > 24) return false;
+    if (/\d/.test(cls)) return false;
+    if ((cls.match(/-/g) || []).length > 3) return false;
+    return true;
+  }
+
+  function segmentFor(node) {
+    var seg = node.localName, added = 0;
+    if (node.classList) {
+      for (var i = 0; i < node.classList.length && added < 2; i++) {
+        if (isStableClass(node.classList[i])) {
+          seg += "." + esc(node.classList[i]);
+          added++;
+        }
+      }
+    }
+    var idx = 1, sib = node;
+    while ((sib = sib.previousElementSibling)) {
+      if (sib.tagName === node.tagName) idx++;
+    }
+    return seg + ":nth-of-type(" + idx + ")";
+  }
+
+  // Validated unique selector for exactly this element, or null. Anchors to
+  // the DEEPEST stable point: own (unique) id, else the nearest ancestor with
+  // a unique id, else body — with an explicit child chain in between.
+  function selectorForExact(el) {
+    if (!el || el.nodeType !== 1 || !el.localName) return null;
+    if (el === document.body) return "body";
+    if (el.id) {
+      var own = "#" + esc(el.id);
+      if (matchesUniquely(own, el)) return own; // duplicate ids exist in the wild
+    }
+    var parts = [], node = el, depth = 0, prefix = null;
+    while (node && node.nodeType === 1 && node !== document.body) {
+      if (node !== el && node.id) {
+        var idSel = "#" + esc(node.id);
+        if (matchesUniquely(idSel, node)) { prefix = idSel; break; }
+      }
+      if (depth >= 8) return null; // unanchored deep chains are too risky
+      parts.unshift(segmentFor(node));
+      node = node.parentElement; depth++;
+    }
+    if (prefix === null) {
+      if (node !== document.body) return null;
+      prefix = "body";
+    }
+    var sel = prefix + " > " + parts.join(" > ");
+    return matchesUniquely(sel, el) ? sel : null;
+  }
+
+  // Inline boxes that wrap across lines report a misleading bounding rect
+  // (it spans all line fragments) — percents within it drift badly inside
+  // tables and floated text. Anchor to the nearest block-level box instead.
+  var INLINE_TAGS = /^(a|abbr|b|bdi|bdo|cite|code|data|dfn|em|i|kbd|mark|q|s|samp|small|span|strong|sub|sup|time|u|var|wbr)$/;
+  function isInline(node) {
+    var disp = "";
+    try { disp = window.getComputedStyle(node).display; } catch (e) {}
+    // Some environments return "" for un-styled elements; fall back to the
+    // tag's default display.
+    if (!disp) return INLINE_TAGS.test(node.localName || "");
+    return disp === "inline";
+  }
+  function blockAncestor(el) {
+    var node = el, hops = 0;
+    while (node && node.nodeType === 1 && node !== document.body && hops < 12) {
+      if (!isInline(node)) return node;
+      node = node.parentElement; hops++;
+    }
+    return node || el;
+  }
+
+  // The reference element a comment is stored against: nearest block-level
+  // box that yields a VALIDATED unique selector, walking up the parent chain
+  // (each hop recomputes percents against the new reference). Null when
+  // nothing validates — the pin then lives on absolute coordinates alone.
+  function refFor(target) {
+    if (!target || target.nodeType !== 1) return null;
+    var node = blockAncestor(target), hops = 0;
+    while (node && node.nodeType === 1 && node !== document.documentElement && hops < 5) {
+      var sel = selectorForExact(node);
+      if (sel) return { el: node, selector: sel };
+      node = node.parentElement; hops++;
+    }
+    return null;
+  }
+
+  // Full float precision; rounding happens only when a px string is built.
   function pct(client, start, size) {
     if (!size) return null;
     var v = ((client - start) / size) * 100;
-    return Math.max(0, Math.min(100, Math.round(v * 100) / 100));
+    return Math.max(0, Math.min(100, v));
   }
-  function round2(v) { return Math.round(v * 100) / 100; }
 
   // --- comment-mode page styling (crosshair + selection suppression) --------
 
@@ -455,9 +539,10 @@ _AGENT_SCRIPT_TEMPLATE = r"""
   var ovl = null;  // { root, shades[4], box, badge }
 
   function pointDataAt(target, clientX, clientY) {
-    var rect = target && target.getBoundingClientRect ? target.getBoundingClientRect() : null;
+    var ref = refFor(target);
+    var rect = ref ? ref.el.getBoundingClientRect() : null;
     return {
-      selector: selectorFor(target),
+      selector: ref ? ref.selector : null,
       percentX: rect ? pct(clientX, rect.left, rect.width) : null,
       percentY: rect ? pct(clientY, rect.top, rect.height) : null,
       // Clamp: rubber-band overscroll can make scroll offsets momentarily
@@ -576,20 +661,21 @@ _AGENT_SCRIPT_TEMPLATE = r"""
     if (ax >= 0 && ay >= 0 && ax < window.innerWidth && ay < window.innerHeight) {
       el = elementFromPointSafe(ax, ay);
     }
-    var rect = el && el.getBoundingClientRect ? el.getBoundingClientRect() : null;
+    var ref = el ? refFor(el) : null;
+    var rect = ref ? ref.el.getBoundingClientRect() : null;
     post({
       type: "rd:click",
-      selector: el ? selectorFor(el) : null,
+      selector: ref ? ref.selector : null,
       percentX: rect ? pct(ax, rect.left, rect.width) : null,
       percentY: rect ? pct(ay, rect.top, rect.height) : null,
       absX: Math.max(0, Math.round(left)),
       absY: Math.max(0, Math.round(top)),
       clientX: Math.round(upClientX),
       clientY: Math.round(upClientY),
-      regionWidth: Math.round(w),
-      regionHeight: Math.round(h),
-      regionWidthPercent: rect && rect.width ? round2((w / rect.width) * 100) : null,
-      regionHeightPercent: rect && rect.height ? round2((h / rect.height) * 100) : null,
+      regionWidth: w,
+      regionHeight: h,
+      regionWidthPercent: rect && rect.width ? (w / rect.width) * 100 : null,
+      regionHeightPercent: rect && rect.height ? (h / rect.height) * 100 : null,
       viewportWidth: window.innerWidth,
       viewportHeight: window.innerHeight,
       pageUrl: PAGE_URL
@@ -691,13 +777,27 @@ _AGENT_SCRIPT_TEMPLATE = r"""
   }
   function resolvePos(p) {
     if (p.selector) {
-      var el = null;
-      try { el = document.querySelector(p.selector); } catch (e) {}
+      var el = null, list = null;
+      try { list = document.querySelectorAll(p.selector); } catch (e) {}
+      // Integrity check 1: the selector must STILL match exactly one element;
+      // ambiguity means the DOM changed underneath it — don't trust it.
+      if (list && list.length === 1) el = list[0];
       if (el) {
         var r = el.getBoundingClientRect();
         var fx = (p.percentX == null ? 50 : p.percentX) / 100;
         var fy = (p.percentY == null ? 50 : p.percentY) / 100;
-        return { x: r.left + window.scrollX + r.width * fx, y: r.top + window.scrollY + r.height * fy, el: el };
+        var x = r.left + window.scrollX + r.width * fx;
+        var y = r.top + window.scrollY + r.height * fy;
+        // Integrity check 2: a resolved position drifting > DRIFT_MAX px from
+        // the captured absolute coords means the selector now matches a
+        // different element — prefer the absolute coords.
+        if (
+          typeof p.absX === "number" && typeof p.absY === "number" &&
+          (Math.abs(x - p.absX) > DRIFT_MAX || Math.abs(y - p.absY) > DRIFT_MAX)
+        ) {
+          return { x: p.absX, y: p.absY, el: null };
+        }
+        return { x: x, y: y, el: el };
       }
     }
     if (typeof p.absX === "number" && typeof p.absY === "number") {
