@@ -17,9 +17,11 @@ import {
 } from "@/lib/auth";
 import type {
   AuthTokens,
+  ChangePasswordPayload,
   LoginPayload,
   RegisterPayload,
   User,
+  UserUpdatePayload,
 } from "@/types";
 
 const ME_QUERY_KEY = ["auth", "me"] as const;
@@ -76,6 +78,22 @@ export function useAuth() {
     },
   });
 
+  const updateProfile = useMutation({
+    mutationFn: async (payload: UserUpdatePayload) => {
+      const { data } = await api.patch<User>("/auth/me", payload);
+      return data;
+    },
+    onSuccess: (updated) => {
+      queryClient.setQueryData<User>(ME_QUERY_KEY, updated);
+    },
+  });
+
+  const changePassword = useMutation({
+    mutationFn: async (payload: ChangePasswordPayload) => {
+      await api.post("/auth/change-password", payload);
+    },
+  });
+
   const logout = (): void => {
     clearTokens();
     queryClient.removeQueries({ queryKey: ME_QUERY_KEY });
@@ -89,6 +107,8 @@ export function useAuth() {
     login,
     register,
     forgotPassword,
+    updateProfile,
+    changePassword,
     logout,
   };
 }

@@ -21,7 +21,7 @@ from app.api.deps import get_current_user, get_db, limiter
 from app.core import security
 from app.core.config import settings
 from app.models.user import User
-from app.schemas.user import UserCreate, UserRead
+from app.schemas.user import UserCreate, UserRead, UserUpdate
 
 logger = logging.getLogger(__name__)
 
@@ -64,6 +64,11 @@ class ResetPasswordRequest(BaseModel):
 
 class MessageResponse(BaseModel):
     message: str
+
+
+class ChangePasswordRequest(BaseModel):
+    current_password: str = Field(min_length=1, max_length=72)
+    new_password: str = Field(min_length=8, max_length=72)
 
 
 # --- Helpers ----------------------------------------------------------------
@@ -217,3 +222,58 @@ async def reset_password(
 @router.get("/me", response_model=UserRead)
 async def me(current_user: User = Depends(get_current_user)) -> User:
     return current_user
+
+
+@router.patch("/me", response_model=UserRead)
+async def update_me(
+    data: UserUpdate,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> User:
+    """Profile update — v1 covers full_name only. Email changes are excluded
+    (they'd need re-verification) and password changes go through the
+    dedicated /auth/change-password flow."""
+    if data.email is not None and data.email.lower() != current_user.email:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Email changes aren't supported yet",
+        )
+    if data.password is not None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Use /auth/change-password to change your password",
+        )
+    # Re-fetch within this request's session (the dependency-provided user may
+    # be detached, e.g. under test overrides).
+    user = await db.get(User, current_user.id)
+    if user is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
+        )
+    if data.full_name is not None:
+        user.full_name = data.full_name
+    await db.commit()
+    await db.refresh(user)
+    return user
+
+
+@router.post("/change-password", response_model=MessageResponse)
+@limiter.limit(_AUTH_RATE_LIMIT)
+async def change_password(
+    request: Request,
+    data: ChangePasswordRequest,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> MessageResponse:
+    user = await db.get(User, current_user.id)
+    # Generic message — don't confirm which part failed.
+    if user is None or not security.verify_password(
+        data.current_password, user.hashed_password
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect password",
+        )
+    user.hashed_password = security.hash_password(data.new_password)
+    await db.commit()
+    return MessageResponse(message="Your password has been changed.")

@@ -1,12 +1,13 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { isAxiosError } from "axios";
-import { LogOut, MousePointerClick, Plus } from "lucide-react";
+import { MousePointerClick, Plus } from "lucide-react";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { z } from "zod";
 
 import { ProjectCard } from "@/components/dashboard/ProjectCard";
+import { UserMenu } from "@/components/layout/UserMenu";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import {
@@ -20,7 +21,6 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useAuth } from "@/hooks/useAuth";
 import { useCreateProject, useProjects } from "@/hooks/useProjects";
 import type { ApiError } from "@/types";
 
@@ -194,7 +194,6 @@ function EmptyState({ onCreate }: EmptyStateProps) {
 // --- Page -----------------------------------------------------------------------
 
 export default function Dashboard() {
-  const { user, logout } = useAuth();
   const projectsQuery = useProjects();
   const [createOpen, setCreateOpen] = useState(false);
 
@@ -211,22 +210,7 @@ export default function Dashboard() {
             </span>
             <span className="font-semibold text-text-primary">ReviewDrop</span>
           </div>
-          <div className="flex items-center gap-3">
-            {user ? (
-              <span className="hidden text-sm text-text-secondary sm:inline">
-                {user.email}
-              </span>
-            ) : null}
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={logout}
-              className="text-text-secondary"
-            >
-              <LogOut className="h-4 w-4" />
-              Log out
-            </Button>
-          </div>
+          <UserMenu />
         </div>
       </header>
 

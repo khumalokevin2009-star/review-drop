@@ -88,11 +88,17 @@ async def client(engine, session_factory, auth):
 # --- seed helpers -----------------------------------------------------------
 
 
-async def make_user(session_factory, plan: str = "free") -> User:
+async def make_user(
+    session_factory, plan: str = "free", password: str | None = None
+) -> User:
+    """Seed a user. Pass ``password`` when the test exercises real password
+    verification (bcrypt is slow, so the default stays a placeholder hash)."""
+    from app.core import security
+
     async with session_factory() as s:
         user = User(
             email=f"{uuid.uuid4().hex[:12]}@test.co",
-            hashed_password="x",
+            hashed_password=security.hash_password(password) if password else "x",
             full_name="Tester",
             plan=plan,
         )

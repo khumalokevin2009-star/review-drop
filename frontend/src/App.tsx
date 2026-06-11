@@ -15,6 +15,7 @@ const Landing = lazy(() => import("@/pages/landing/Landing"));
 const CanvasView = lazy(() => import("@/pages/canvas/CanvasView"));
 const ProjectView = lazy(() => import("@/pages/project/ProjectView"));
 const ReviewPage = lazy(() => import("@/pages/review/ReviewPage"));
+const Settings = lazy(() => import("@/pages/settings/Settings"));
 
 export default function App() {
   return (
@@ -50,6 +51,14 @@ export default function App() {
           element={
             <Suspense fallback={<LoadingSpinner />}>
               <CanvasView />
+            </Suspense>
+          }
+        />
+        <Route
+          path="/settings"
+          element={
+            <Suspense fallback={<LoadingSpinner />}>
+              <Settings />
             </Suspense>
           }
         />

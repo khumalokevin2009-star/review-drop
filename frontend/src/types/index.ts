@@ -30,6 +30,16 @@ export interface RegisterPayload {
   full_name: string;
 }
 
+/** PATCH /auth/me — v1 supports full_name only. */
+export interface UserUpdatePayload {
+  full_name?: string;
+}
+
+export interface ChangePasswordPayload {
+  current_password: string;
+  new_password: string;
+}
+
 export type ProjectStatus = "active" | "archived";
 
 export interface Project {
