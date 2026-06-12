@@ -2,15 +2,17 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { MailCheck } from "lucide-react";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
-import { Link } from "react-router-dom";
 import { toast } from "sonner";
 import { z } from "zod";
 
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { useAuth } from "@/hooks/useAuth";
-import { AuthLayout } from "@/pages/auth/AuthLayout";
+import {
+  AuthButton,
+  AuthInput,
+  AuthLabel,
+  AuthLayout,
+  AuthTextLink,
+} from "@/pages/auth/AuthLayout";
 
 const forgotSchema = z.object({
   email: z.string().email("Enter a valid email address"),
@@ -45,19 +47,14 @@ export default function ForgotPassword() {
       footer={
         <>
           Remembered it?{" "}
-          <Link
-            to="/login"
-            className="font-medium text-brand hover:text-brand-hover"
-          >
-            Back to login
-          </Link>
+          <AuthTextLink to="/login">Back to login</AuthTextLink>
         </>
       }
     >
       {sent ? (
         <div className="flex flex-col items-center gap-3 py-4 text-center">
-          <MailCheck className="h-10 w-10 text-success" />
-          <p className="text-sm text-text-secondary">
+          <MailCheck className="h-10 w-10 text-white/70" />
+          <p className="text-sm text-[#A1A1AA]">
             If an account exists for that email, a reset link is on its way.
             Check your inbox.
           </p>
@@ -65,12 +62,12 @@ export default function ForgotPassword() {
       ) : (
         <form
           onSubmit={(e) => void handleSubmit(onSubmit)(e)}
-          className="space-y-4"
+          className="space-y-5"
           noValidate
         >
           <div className="space-y-2">
-            <Label htmlFor="email">Email</Label>
-            <Input
+            <AuthLabel htmlFor="email">Email</AuthLabel>
+            <AuthInput
               id="email"
               type="email"
               autoComplete="email"
@@ -78,19 +75,15 @@ export default function ForgotPassword() {
               {...register("email")}
             />
             {errors.email ? (
-              <p className="text-xs text-destructive">
+              <p className="text-xs text-[#EF4444]">
                 {errors.email.message}
               </p>
             ) : null}
           </div>
 
-          <Button
-            type="submit"
-            className="w-full"
-            disabled={forgotPassword.isPending}
-          >
+          <AuthButton type="submit" disabled={forgotPassword.isPending}>
             {forgotPassword.isPending ? "Sending…" : "Send reset link"}
-          </Button>
+          </AuthButton>
         </form>
       )}
     </AuthLayout>

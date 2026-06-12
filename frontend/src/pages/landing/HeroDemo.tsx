@@ -377,7 +377,7 @@ export default function HeroDemo() {
           <span className="h-2 w-2 rounded-full bg-white/10" />
         </div>
         <div className="mx-auto rounded bg-white/[0.05] px-2.5 py-0.5 font-mono text-[10px] text-[#71717A]">
-          orvelle.com/r/x7k2m9
+          orvellehq.com/r/x7k2m9
         </div>
         <div className="w-9" aria-hidden="true" />
       </div>

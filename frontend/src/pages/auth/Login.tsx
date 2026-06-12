@@ -5,11 +5,16 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { z } from "zod";
 
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { useAuth } from "@/hooks/useAuth";
-import { AuthLayout } from "@/pages/auth/AuthLayout";
+import { cn } from "@/lib/utils";
+import {
+  AuthButton,
+  authFocusRing,
+  AuthInput,
+  AuthLabel,
+  AuthLayout,
+  AuthTextLink,
+} from "@/pages/auth/AuthLayout";
 import type { ApiError } from "@/types";
 
 const loginSchema = z.object({
@@ -54,23 +59,18 @@ export default function Login() {
       footer={
         <>
           Don&apos;t have an account?{" "}
-          <Link
-            to="/register"
-            className="font-medium text-brand hover:text-brand-hover"
-          >
-            Sign up
-          </Link>
+          <AuthTextLink to="/register">Sign up</AuthTextLink>
         </>
       }
     >
       <form
         onSubmit={(e) => void handleSubmit(onSubmit)(e)}
-        className="space-y-4"
+        className="space-y-5"
         noValidate
       >
         <div className="space-y-2">
-          <Label htmlFor="email">Email</Label>
-          <Input
+          <AuthLabel htmlFor="email">Email</AuthLabel>
+          <AuthInput
             id="email"
             type="email"
             autoComplete="email"
@@ -78,21 +78,24 @@ export default function Login() {
             {...register("email")}
           />
           {errors.email ? (
-            <p className="text-xs text-destructive">{errors.email.message}</p>
+            <p className="text-xs text-[#EF4444]">{errors.email.message}</p>
           ) : null}
         </div>
 
         <div className="space-y-2">
           <div className="flex items-center justify-between">
-            <Label htmlFor="password">Password</Label>
+            <AuthLabel htmlFor="password">Password</AuthLabel>
             <Link
               to="/forgot-password"
-              className="text-xs text-text-secondary hover:text-brand"
+              className={cn(
+                "rounded-sm text-xs text-[#A1A1AA] transition-colors hover:text-white",
+                authFocusRing,
+              )}
             >
               Forgot password?
             </Link>
           </div>
-          <Input
+          <AuthInput
             id="password"
             type="password"
             autoComplete="current-password"
@@ -100,15 +103,15 @@ export default function Login() {
             {...register("password")}
           />
           {errors.password ? (
-            <p className="text-xs text-destructive">
+            <p className="text-xs text-[#EF4444]">
               {errors.password.message}
             </p>
           ) : null}
         </div>
 
-        <Button type="submit" className="w-full" disabled={login.isPending}>
+        <AuthButton type="submit" disabled={login.isPending}>
           {login.isPending ? "Logging in…" : "Log in"}
-        </Button>
+        </AuthButton>
       </form>
     </AuthLayout>
   );

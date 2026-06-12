@@ -1,15 +1,18 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { isAxiosError } from "axios";
 import { useForm } from "react-hook-form";
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { z } from "zod";
 
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { useAuth } from "@/hooks/useAuth";
-import { AuthLayout } from "@/pages/auth/AuthLayout";
+import {
+  AuthButton,
+  AuthInput,
+  AuthLabel,
+  AuthLayout,
+  AuthTextLink,
+} from "@/pages/auth/AuthLayout";
 import type { ApiError } from "@/types";
 
 const registerSchema = z.object({
@@ -55,23 +58,18 @@ export default function Register() {
       footer={
         <>
           Already have an account?{" "}
-          <Link
-            to="/login"
-            className="font-medium text-brand hover:text-brand-hover"
-          >
-            Log in
-          </Link>
+          <AuthTextLink to="/login">Log in</AuthTextLink>
         </>
       }
     >
       <form
         onSubmit={(e) => void handleSubmit(onSubmit)(e)}
-        className="space-y-4"
+        className="space-y-5"
         noValidate
       >
         <div className="space-y-2">
-          <Label htmlFor="full_name">Full name</Label>
-          <Input
+          <AuthLabel htmlFor="full_name">Full name</AuthLabel>
+          <AuthInput
             id="full_name"
             type="text"
             autoComplete="name"
@@ -79,15 +77,15 @@ export default function Register() {
             {...register("full_name")}
           />
           {errors.full_name ? (
-            <p className="text-xs text-destructive">
+            <p className="text-xs text-[#EF4444]">
               {errors.full_name.message}
             </p>
           ) : null}
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="email">Email</Label>
-          <Input
+          <AuthLabel htmlFor="email">Email</AuthLabel>
+          <AuthInput
             id="email"
             type="email"
             autoComplete="email"
@@ -95,13 +93,13 @@ export default function Register() {
             {...register("email")}
           />
           {errors.email ? (
-            <p className="text-xs text-destructive">{errors.email.message}</p>
+            <p className="text-xs text-[#EF4444]">{errors.email.message}</p>
           ) : null}
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="password">Password</Label>
-          <Input
+          <AuthLabel htmlFor="password">Password</AuthLabel>
+          <AuthInput
             id="password"
             type="password"
             autoComplete="new-password"
@@ -109,21 +107,17 @@ export default function Register() {
             {...register("password")}
           />
           {errors.password ? (
-            <p className="text-xs text-destructive">
+            <p className="text-xs text-[#EF4444]">
               {errors.password.message}
             </p>
           ) : null}
         </div>
 
-        <Button
-          type="submit"
-          className="w-full"
-          disabled={registerMutation.isPending}
-        >
+        <AuthButton type="submit" disabled={registerMutation.isPending}>
           {registerMutation.isPending
             ? "Creating account…"
             : "Create account"}
-        </Button>
+        </AuthButton>
       </form>
     </AuthLayout>
   );
