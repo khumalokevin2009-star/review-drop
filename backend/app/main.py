@@ -9,12 +9,14 @@ from __future__ import annotations
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 
 from app.api.deps import limiter
-from app.api.routes import auth, comments, projects, proxy, reviews
+from app.api.routes import auth, comments, projects, proxy, reviews, screenshots
 from app.core.config import settings
+from app.services.storage_service import LocalStorage, get_storage
 
 app = FastAPI(title=settings.APP_NAME)
 
@@ -37,6 +39,13 @@ app.include_router(proxy.router, prefix="/api/v1")
 app.include_router(projects.router, prefix="/api/v1")
 app.include_router(reviews.router, prefix="/api/v1")
 app.include_router(comments.router, prefix="/api/v1")
+app.include_router(screenshots.router, prefix="/api/v1")
+
+# Local-dev storage fallback: when R2 isn't configured, screenshots live in
+# ./storage and are served here so the feature works without an R2 account.
+_storage = get_storage()
+if isinstance(_storage, LocalStorage):
+    app.mount("/storage", StaticFiles(directory=_storage.root), name="storage")
 
 
 @app.get("/health", tags=["health"])

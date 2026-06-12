@@ -18,10 +18,21 @@ comments default to status 'open'; screenshot_url stays null (filled later by
 the screenshot service).
 """
 
+import logging
 import uuid
 from datetime import datetime, timezone
+from urllib.parse import urlparse
 
-from fastapi import APIRouter, Depends, Header, HTTPException, Query, Response, status
+from fastapi import (
+    APIRouter,
+    BackgroundTasks,
+    Depends,
+    Header,
+    HTTPException,
+    Query,
+    Response,
+    status,
+)
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -39,8 +50,21 @@ from app.schemas.comment import (
     CommentStatus,
     CommentStatusUpdate,
 )
+from app.services.screenshot_service import capture_comment_screenshot
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["comments"])
+
+
+def _same_bare_host(a: str, b: str) -> bool:
+    """Case- and www-insensitive host comparison of two URLs."""
+
+    def bare(url: str) -> str:
+        host = (urlparse(url).hostname or "").lower()
+        return host[4:] if host.startswith("www.") else host
+
+    return bare(a) != "" and bare(a) == bare(b)
 
 # Eager-load both possible authors so serialization never lazy-loads (which
 # would fail under async) and we can render the commenter's name.
@@ -370,6 +394,7 @@ async def delete_comment(
 async def create_guest_comment(
     slug: str,
     data: CommentCreate,
+    background_tasks: BackgroundTasks,
     x_guest_token: str | None = Header(default=None, alias="X-Guest-Token"),
     db: AsyncSession = Depends(get_db),
 ) -> CommentRead:
@@ -400,6 +425,17 @@ async def create_guest_comment(
     db.add(comment)
     await db.commit()
     await db.refresh(comment)
+    # Pin-fallback screenshot (Section 9): best-effort, never blocks the reply.
+    # Only capture when the guest-supplied page_url is actually on the
+    # project's site — otherwise a guest could use a review link as a
+    # screenshot service for arbitrary URLs.
+    project_url = await db.scalar(
+        select(Project.url).where(Project.id == review.project_id)
+    )
+    if project_url is not None and _same_bare_host(comment.page_url, project_url):
+        background_tasks.add_task(
+            capture_comment_screenshot, comment.id, comment.page_url
+        )
     return _to_read(await _load_for_read(db, comment.id), is_mine=True)
 
 

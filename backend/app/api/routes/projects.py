@@ -8,7 +8,14 @@ limit (Section 9) is enforced here, not just in the UI.
 import uuid
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends, HTTPException, Response, status
+from fastapi import (
+    APIRouter,
+    BackgroundTasks,
+    Depends,
+    HTTPException,
+    Response,
+    status,
+)
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -16,6 +23,7 @@ from app.api.deps import get_current_user, get_db
 from app.models.project import Project
 from app.models.user import User
 from app.schemas.project import ProjectCreate, ProjectRead, ProjectUpdate
+from app.services.screenshot_service import capture_project_thumbnail
 
 router = APIRouter(prefix="/projects", tags=["projects"])
 
@@ -80,6 +88,7 @@ async def list_projects(
 @router.post("", response_model=ProjectRead, status_code=status.HTTP_201_CREATED)
 async def create_project(
     data: ProjectCreate,
+    background_tasks: BackgroundTasks,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> Project:
@@ -95,6 +104,9 @@ async def create_project(
     db.add(project)
     await db.commit()
     await db.refresh(project)
+    # Thumbnail capture is best-effort and must never delay or break creation
+    # (Section 5: always capture a screenshot on project creation as fallback).
+    background_tasks.add_task(capture_project_thumbnail, project.id, project.url)
     return project
 
 

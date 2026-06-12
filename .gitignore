@@ -28,3 +28,6 @@ test-results/
 .idea/
 .vscode/
 *.log
+
+# Local-dev screenshot storage (R2 fallback)
+backend/storage/
