@@ -2,7 +2,7 @@
 @tailwind components;
 @tailwind utilities;
 
-/* ReviewDrop design system — CLAUDE.md Section 10 */
+/* Orvelle design system — CLAUDE.md Section 10 */
 @layer base {
   :root {
     --brand-primary: #6366f1;

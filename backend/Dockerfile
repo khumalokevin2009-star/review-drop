@@ -1,4 +1,4 @@
-# ReviewDrop backend — FastAPI + Playwright.
+# Orvelle backend — FastAPI + Playwright.
 # Render target needs ~2GB RAM for Playwright (CLAUDE.md Section 5).
 FROM python:3.11-slim
 
@@ -16,9 +16,10 @@ RUN apt-get update \
 COPY requirements.txt .
 RUN pip install --upgrade pip && pip install -r requirements.txt
 
-# Playwright browser binaries are needed by the screenshot service (Phase 2).
-# Enable in that phase to keep the Phase 1 image lean:
-#   RUN playwright install --with-deps chromium
+# Playwright Chromium + its system libraries for the screenshot service.
+# Costs roughly 700MB-1GB of image size — required for on-demand captures.
+RUN playwright install --with-deps chromium \
+    && rm -rf /var/lib/apt/lists/*
 
 COPY . .
 

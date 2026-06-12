@@ -1,4 +1,4 @@
-"""Proxy service — the core of ReviewDrop's rendering pipeline.
+"""Proxy service — the core of Orvelle's rendering pipeline.
 
 Fetches a target staging site server-side, blocks SSRF attempts, pins the
 validated IP into the connection (defeating DNS-rebinding), follows redirects
@@ -368,6 +368,11 @@ _META_REFRESH_URL_RE = re.compile(r"(url\s*=\s*)(['\"]?)([^'\";]+)\2", re.IGNORE
 # cannot reach our backend, cookies, or storage. It strictly accepts messages
 # only from window.parent. The parent validates event.source === the iframe.
 # `__RD_PAGE_URL_JSON__` is replaced at injection time with the real page URL.
+# Note: the `rd:` postMessage tags and `data-rd-*` attribute hooks below are
+# legacy-prefixed by design. They form the wire protocol between this injected
+# agent and the React parent (see frontend/src/types/canvas.ts); the prefix is
+# NOT rebranded with the product name, because changing it would break the
+# handshake with any already-loaded canvas/iframe session.
 _AGENT_SCRIPT_TEMPLATE = r"""
 (function () {
   "use strict";

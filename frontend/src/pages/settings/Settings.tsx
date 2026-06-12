@@ -248,7 +248,7 @@ const PLAN_LIMITS: Record<Plan, PlanLimit[]> = {
     { label: "1 review link per project", included: true },
     { label: "Unlimited guest commenters", included: true },
     { label: "PDF / CSV export", included: false },
-    { label: "ReviewDrop watermark shown", included: false },
+    { label: "Orvelle watermark shown", included: false },
   ],
   pro: [
     { label: "Unlimited projects", included: true },

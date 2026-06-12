@@ -82,10 +82,10 @@ function Logo() {
   return (
     <div className="flex items-center gap-2">
       <span className="flex h-7 w-7 items-center justify-center rounded-full bg-[#FAFAFA] text-xs font-bold text-[#0A0A0A]">
-        R
+        O
       </span>
       <span className="font-semibold tracking-tight text-[#FAFAFA]">
-        ReviewDrop
+        Orvelle
       </span>
     </div>
   );
@@ -145,7 +145,7 @@ const tiers: Tier[] = [
       "2 active projects",
       "1 review link per project",
       "Unlimited client commenters",
-      "ReviewDrop watermark",
+      "Orvelle watermark",
     ],
   },
   {
@@ -436,7 +436,7 @@ export default function Landing() {
             <div className="grid grid-cols-2 border-b border-[#27272A] bg-[#111111] text-sm font-medium">
               <div className="px-5 py-3 text-[#71717A]">Markup.io</div>
               <div className="border-l border-[#27272A] px-5 py-3 text-[#FAFAFA]">
-                ReviewDrop
+                Orvelle
               </div>
             </div>
             {comparison.map(({ them, us }) => (
@@ -566,7 +566,7 @@ export default function Landing() {
         <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-4 px-4 py-8 sm:flex-row sm:px-6">
           <Logo />
           <p className="text-xs text-[#52525B]">
-            © {new Date().getFullYear()} ReviewDrop. Built for freelance web
+            © {new Date().getFullYear()} Orvelle. Built for freelance web
             designers.
           </p>
           <div className="flex gap-5 text-sm text-[#A1A1AA]">

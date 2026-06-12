@@ -2,7 +2,7 @@ import animate from "tailwindcss-animate";
 import type { Config } from "tailwindcss";
 
 /**
- * ReviewDrop design system — CLAUDE.md Section 10.
+ * Orvelle design system — CLAUDE.md Section 10.
  * Colours are defined as CSS variables in src/index.css and
  * referenced here so Tailwind utilities (bg-brand, text-status-open, …)
  * map 1:1 to the canonical palette.

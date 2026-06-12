@@ -20,6 +20,9 @@ export interface UseGuestSession {
   createSession: (name: string, email?: string) => Promise<string>;
 }
 
+// The `rd_guest_` localStorage prefix is legacy by design: it is NOT rebranded
+// to Orvelle, because the key identifies tokens already persisted in clients'
+// browsers. Renaming it would silently log out every existing guest session.
 const tokenKey = (slug: string) => `rd_guest_${slug}`;
 const nameKey = (slug: string) => `rd_guest_name_${slug}`;
 

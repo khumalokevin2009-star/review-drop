@@ -18,12 +18,14 @@ class Settings(BaseSettings):
     )
 
     # App
-    APP_NAME: str = "ReviewDrop"
+    APP_NAME: str = "Orvelle"
     APP_ENV: str = "development"  # development | staging | production
     FRONTEND_URL: str = "http://localhost:5173"
     BACKEND_URL: str = "http://localhost:8000"
 
     # Database
+    # Note: the `reviewdrop` role/db identifiers are legacy by design — kept to
+    # avoid breaking existing local volumes and managed instances on the rebrand.
     DATABASE_URL: str = (
         "postgresql+asyncpg://reviewdrop:reviewdrop@localhost:5432/reviewdrop"
     )
@@ -38,7 +40,7 @@ class Settings(BaseSettings):
     R2_ACCOUNT_ID: str | None = None
     R2_ACCESS_KEY_ID: str | None = None
     R2_SECRET_ACCESS_KEY: str | None = None
-    R2_BUCKET_NAME: str = "reviewdrop-screenshots"
+    R2_BUCKET_NAME: str = "orvelle-screenshots"
     R2_PUBLIC_URL: str | None = None
 
     # Stripe (optional until billing is wired up)
@@ -51,7 +53,7 @@ class Settings(BaseSettings):
 
     # Resend (optional until email is wired up)
     RESEND_API_KEY: str | None = None
-    EMAIL_FROM: str = "hello@reviewdrop.io"
+    EMAIL_FROM: str = "hello@orvelle.com"
 
     # Sentry (optional)
     SENTRY_DSN: str | None = None

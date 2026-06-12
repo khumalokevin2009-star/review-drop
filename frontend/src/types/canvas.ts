@@ -3,6 +3,11 @@
  * injected agent script. The postMessage protocol is modelled as discriminated
  * unions (tag = `type`, always prefixed `rd:`). All protocol logic lives in
  * CanvasFrame; everything else consumes these types.
+ *
+ * Note: the `rd:` prefix is legacy by design and is deliberately NOT rebranded
+ * to Orvelle. It is the wire-protocol namespace shared with the proxy-injected
+ * agent (backend/app/services/proxy_service.py); changing it on either side
+ * would break the postMessage handshake for any in-flight canvas session.
  */
 
 import type { Comment, CommentStatus } from "@/types";

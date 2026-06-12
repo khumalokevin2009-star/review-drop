@@ -50,7 +50,7 @@ export default function Login() {
   return (
     <AuthLayout
       title="Welcome back"
-      description="Log in to your ReviewDrop account"
+      description="Log in to your Orvelle account"
       footer={
         <>
           Don&apos;t have an account?{" "}
