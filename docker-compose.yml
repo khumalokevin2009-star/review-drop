@@ -1,5 +1,9 @@
-# Local dev stack for ReviewDrop: Postgres + FastAPI backend + Vite frontend.
-# (CLAUDE.md Section 5 — Dev Environment.)
+# Local dev stack for Orvelle (formerly ReviewDrop): Postgres + FastAPI backend
+# + Vite frontend. (CLAUDE.md Section 5 — Dev Environment.)
+#
+# Note: the `db` service, the `reviewdrop` Postgres role/db, and the `pgdata`
+# volume keep their original names by design — renaming them on the rebrand
+# would orphan existing local volumes. They are internal identifiers only.
 #
 # Note: the `frontend` service expects ./frontend/Dockerfile, which is built by
 # the Frontend agent in a later task. Until then, run just the backend stack:

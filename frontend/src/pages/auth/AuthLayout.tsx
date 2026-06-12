@@ -27,10 +27,10 @@ export function AuthLayout({
     <div className="flex min-h-screen flex-col items-center justify-center bg-background px-4">
       <Link to="/" className="mb-8 flex items-center gap-2">
         <span className="flex h-8 w-8 items-center justify-center rounded-full bg-brand text-sm font-bold text-white">
-          R
+          O
         </span>
         <span className="text-lg font-semibold text-text-primary">
-          ReviewDrop
+          Orvelle
         </span>
       </Link>
 

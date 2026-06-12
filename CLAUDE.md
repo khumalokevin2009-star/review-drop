@@ -1,4 +1,4 @@
-# CLAUDE.md — Project Brief: ReviewDrop (Working Title)
+# CLAUDE.md — Project Brief: Orvelle (formerly ReviewDrop)
 ## Client Feedback & Website Proofing SaaS
 
 > **Read this entire file before touching any code.**
@@ -574,7 +574,7 @@ Every PR that touches any of these areas must confirm these are in place:
 
 ```bash
 # App
-APP_NAME=ReviewDrop
+APP_NAME=Orvelle
 APP_ENV=development                  # development | staging | production
 FRONTEND_URL=http://localhost:5173
 BACKEND_URL=http://localhost:8000
@@ -592,7 +592,7 @@ REFRESH_TOKEN_EXPIRE_DAYS=7
 R2_ACCOUNT_ID=
 R2_ACCESS_KEY_ID=
 R2_SECRET_ACCESS_KEY=
-R2_BUCKET_NAME=reviewdrop-screenshots
+R2_BUCKET_NAME=orvelle-screenshots
 R2_PUBLIC_URL=https://pub-xxx.r2.dev
 
 # Stripe
@@ -605,7 +605,7 @@ STRIPE_STUDIO_ANNUAL_PRICE_ID=price_...
 
 # Resend
 RESEND_API_KEY=re_...
-EMAIL_FROM=hello@reviewdrop.io
+EMAIL_FROM=hello@orvelle.com
 
 # Sentry
 SENTRY_DSN=https://...
@@ -682,7 +682,7 @@ When assigning tasks to Claude Code or Cowork agents, use these scoped task desc
 Start every Claude Code session with:
 
 ```
-You are working on ReviewDrop — a client website feedback SaaS.
+You are working on Orvelle — a client website feedback SaaS.
 Read CLAUDE.md fully before starting.
 Your task today is: [TASK NAME] (Section [X] of CLAUDE.md).
 Only touch files in: [FILE LIST].
@@ -741,6 +741,6 @@ A feature is done when:
 ---
 
 *Last updated: June 2026*
-*Product: ReviewDrop (working title)*
+*Product: Orvelle (formerly ReviewDrop)*
 *Developer: Solo founder, UK*
 *Stack: React + TypeScript + FastAPI + PostgreSQL + Playwright + Cloudflare R2 + Stripe + Resend*

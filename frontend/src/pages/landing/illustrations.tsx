@@ -350,7 +350,7 @@ export function PlatformPills() {
 }
 
 // ---------------------------------------------------------------------------
-// 2. DASHBOARD MINI — miniature ReviewDrop dashboard (static)
+// 2. DASHBOARD MINI — miniature Orvelle dashboard (static)
 // ---------------------------------------------------------------------------
 
 const MINI_PROJECTS = [
@@ -610,7 +610,7 @@ export function ShareLinkIllustration({ className }: { className?: string }) {
       <div className="relative flex items-center gap-3 rounded-lg border border-zinc-800 border-t-zinc-700/50 bg-[#111111] py-2 pl-4 pr-2 shadow-2xl shadow-black/50">
         <Link2 className="h-3.5 w-3.5 shrink-0 text-zinc-600" />
         <span className="font-mono text-xs text-zinc-300">
-          reviewdrop.io/r/x7Kp2mQa
+          orvelle.com/r/x7Kp2mQa
         </span>
         <motion.span
           variants={reduced ? undefined : copyButtonV}
@@ -694,9 +694,9 @@ export function BeforeAfterSplit({ className }: { className?: string }) {
       <div className="rounded-xl border border-zinc-800 border-t-zinc-700/50 bg-[#0A0A0A] p-5 shadow-2xl shadow-black/50">
         <div className="flex items-center gap-2 text-[10px] font-medium uppercase tracking-[0.14em] text-zinc-300">
           <span className="flex h-3.5 w-3.5 items-center justify-center rounded-full bg-zinc-200 text-[7px] font-bold text-[#0A0A0A]">
-            R
+            O
           </span>
-          ReviewDrop
+          Orvelle
         </div>
         <div className="mt-6">
           <div className="relative w-fit rounded-lg border border-zinc-800 border-t-zinc-700/50 bg-[#111111] p-3 pl-4 shadow-2xl shadow-black/50">

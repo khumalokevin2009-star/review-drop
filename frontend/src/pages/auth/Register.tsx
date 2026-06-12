@@ -35,7 +35,7 @@ export default function Register() {
   const onSubmit = (values: RegisterForm) => {
     registerMutation.mutate(values, {
       onSuccess: () => {
-        toast.success("Welcome to ReviewDrop!");
+        toast.success("Welcome to Orvelle!");
         navigate("/dashboard", { replace: true });
       },
       onError: (error) => {

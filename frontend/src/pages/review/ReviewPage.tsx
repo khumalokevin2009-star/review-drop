@@ -272,6 +272,16 @@ export default function ReviewPage() {
         </div>
       </div>
 
+      {/* brand watermark (guest-facing — CLAUDE.md Section 9) */}
+      <a
+        href="/"
+        target="_blank"
+        rel="noreferrer"
+        className="pointer-events-auto absolute bottom-4 right-4 rounded-full border border-border bg-surface px-3 py-1.5 text-xs text-text-secondary shadow-lg transition-colors hover:text-text-primary"
+      >
+        Powered by <span className="font-semibold text-text-primary">Orvelle</span>
+      </a>
+
       {/* name capture (first comment only) */}
       <Dialog
         open={showNameModal}

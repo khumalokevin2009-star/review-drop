@@ -206,9 +206,9 @@ export default function Dashboard() {
         <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3 sm:px-6">
           <div className="flex items-center gap-2">
             <span className="flex h-7 w-7 items-center justify-center rounded-full bg-brand text-xs font-bold text-white">
-              R
+              O
             </span>
-            <span className="font-semibold text-text-primary">ReviewDrop</span>
+            <span className="font-semibold text-text-primary">Orvelle</span>
           </div>
           <UserMenu />
         </div>
