@@ -68,12 +68,18 @@ export default {
           from: { strokeDashoffset: "0" },
           to: { strokeDashoffset: "-16" },
         },
+        // Thumbnail loading shimmer — a single highlight sweeps left→right over
+        // the placeholder fill (the element sits at -translate-x-full at rest).
+        shimmer: {
+          "100%": { transform: "translateX(100%)" },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
         "pin-pulse": "pin-pulse 3s cubic-bezier(0.22, 1, 0.36, 1) infinite",
         "dash-flow": "dash-flow 2s linear infinite",
+        shimmer: "shimmer 1.6s ease-in-out infinite",
       },
     },
   },

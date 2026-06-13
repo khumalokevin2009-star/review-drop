@@ -34,6 +34,24 @@ export function useProjects() {
       const { data } = await api.get<Project[]>("/projects");
       return data;
     },
+    // Thumbnails are captured by a background task after a project is created
+    // (CLAUDE.md Sections 5/7), so a brand-new card has no preview yet. Poll
+    // briefly so its "preview pending" placeholder resolves to the real
+    // screenshot without a manual refresh — bounded to recently-created
+    // projects so we never poll forever for a capture that genuinely failed.
+    refetchInterval: (query) => {
+      const projects = query.state.data;
+      if (!projects) return false;
+      const PENDING_WINDOW_MS = 3 * 60 * 1000;
+      const now = Date.now();
+      const awaitingThumbnail = projects.some(
+        (p) =>
+          !p.thumbnail_url &&
+          p.status !== "archived" &&
+          now - new Date(p.created_at).getTime() < PENDING_WINDOW_MS,
+      );
+      return awaitingThumbnail ? 4000 : false;
+    },
   });
 }
 

@@ -156,12 +156,11 @@ function CreateProjectDialog({ open, onOpenChange }: CreateProjectDialogProps) {
 
 function ProjectCardSkeleton() {
   return (
-    <Card className="overflow-hidden">
-      <Skeleton className="aspect-video w-full rounded-none" />
-      <div className="space-y-2 p-4">
-        <Skeleton className="h-4 w-2/3" />
-        <Skeleton className="h-3 w-1/3" />
-        <Skeleton className="h-3 w-1/2" />
+    <Card className="relative aspect-video overflow-hidden">
+      <Skeleton className="absolute inset-0 rounded-none" />
+      <div className="absolute inset-x-4 bottom-4 space-y-1.5">
+        <Skeleton className="h-3.5 w-2/3 bg-white/[0.1]" />
+        <Skeleton className="h-2.5 w-1/3 bg-white/[0.1]" />
       </div>
     </Card>
   );

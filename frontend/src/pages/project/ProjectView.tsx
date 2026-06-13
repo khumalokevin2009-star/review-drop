@@ -48,6 +48,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
+import { StatusDot } from "@/components/dashboard/StatusDot";
 import {
   useCreateReview,
   useDeleteReview,
@@ -55,8 +56,20 @@ import {
   useReviewsForProject,
   useUpdateReview,
 } from "@/hooks/useProjects";
-import { cn, formatDate } from "@/lib/utils";
+import { formatDate } from "@/lib/utils";
 import type { ApiError, Project, Review } from "@/types";
+
+/**
+ * Surface a review's lifecycle only when it's an exception worth flagging.
+ * An active, unexpired review is the unremarkable default and gets no marker.
+ */
+function reviewExceptionLabel(review: Review): string | null {
+  if (review.expires_at && new Date(review.expires_at).getTime() < Date.now()) {
+    return "expired";
+  }
+  if (!review.is_active) return "closed";
+  return null;
+}
 
 // --- New-review form ----------------------------------------------------------
 
@@ -179,6 +192,7 @@ function ReviewRow({ review, projectId }: ReviewRowProps) {
   const deleteReview = useDeleteReview(projectId);
 
   const shareUrl = `${window.location.origin}/r/${review.slug}`;
+  const exceptionLabel = reviewExceptionLabel(review);
 
   const handleCopy = async () => {
     try {
@@ -214,22 +228,7 @@ function ReviewRow({ review, projectId }: ReviewRowProps) {
               <h3 className="truncate font-medium text-text-primary">
                 {review.name ?? "Untitled review"}
               </h3>
-              <span
-                className={cn(
-                  "inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-xs font-medium",
-                  review.is_active
-                    ? "bg-status-resolved/10 text-status-resolved"
-                    : "bg-surface-elevated text-text-secondary",
-                )}
-              >
-                <span
-                  className={cn(
-                    "h-1.5 w-1.5 rounded-full",
-                    review.is_active ? "bg-status-resolved" : "bg-text-muted",
-                  )}
-                />
-                {review.is_active ? "active" : "inactive"}
-              </span>
+              {exceptionLabel ? <StatusDot label={exceptionLabel} /> : null}
             </div>
             <p className="mt-1 text-xs text-text-muted">
               Created {formatDate(review.created_at)}
@@ -392,26 +391,11 @@ function ProjectHeader({ project }: { project: Project }) {
 
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2.5">
               <h1 className="truncate text-2xl font-semibold tracking-tight text-text-primary">
                 {project.name}
               </h1>
-              <span
-                className={cn(
-                  "inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-xs font-medium",
-                  isArchived
-                    ? "bg-surface-elevated text-text-secondary"
-                    : "bg-status-resolved/10 text-status-resolved",
-                )}
-              >
-                <span
-                  className={cn(
-                    "h-1.5 w-1.5 rounded-full",
-                    isArchived ? "bg-text-muted" : "bg-status-resolved",
-                  )}
-                />
-                {isArchived ? "archived" : "active"}
-              </span>
+              {isArchived ? <StatusDot label="archived" /> : null}
             </div>
             {project.client_name ? (
               <p className="mt-0.5 text-sm text-text-secondary">
