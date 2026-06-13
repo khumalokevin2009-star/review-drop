@@ -24,10 +24,14 @@ app = FastAPI(title=settings.APP_NAME)
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
-# CORS — restricted to the frontend origin only (CLAUDE.md Section 13).
+# CORS — DEV: a localhost/127.0.0.1 regex so ANY Vite port works without
+# reconfiguring (Vite auto-increments 5173→5174→… when a port is taken, and a
+# fixed allow-list silently breaks those origins). allow_origin_regex echoes
+# the matched origin, so allow_credentials still works.
+# PRODUCTION: drop the regex and lock allow_origins to the production domain.
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[settings.FRONTEND_URL],
+    allow_origin_regex=r"^http://(localhost|127\.0\.0\.1)(:\d+)?$",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
