@@ -1,14 +1,23 @@
 /**
- * Hero ambient demo — a code-built browser-frame mockup of Orvelle running an
- * endless review loop: cursor clicks → pin 1 drops + comment types in → drag
- * region-select → pin 2 lands → sidebar thread resolves → crossfade, repeat.
+ * Hero ambient demo — a code-built, high-fidelity miniature of the REAL Orvelle
+ * review canvas reviewing a believable client website (Linear's "show the real
+ * product" hero). A light, detailed mock site ("Aurora") sits inside the dark
+ * Orvelle shell; the contrast — light page, dark toolbar/sidebar, indigo pins —
+ * is exactly how the real canvas looks, and is what sells the realism.
  *
- * Driven by a phase state machine (setTimeout chain) so every actor reads its
- * cue from a single source of truth. Geometry is percentage-based inside the
- * canvas so the whole scene scales with the hero. Under reduced motion the
- * loop never starts and a fully-composed static scene renders instead.
+ * Endless loop (phase state machine, unchanged choreography):
+ *   cursor → clicks the logo → indigo pin 1 drops → the real comment popover
+ *   opens and types "Logo feels too small here" → thread 1 fills into the
+ *   populated sidebar inbox as OPEN → cursor drags an indigo region over the
+ *   feature row → pin 2 lands → thread 1 ticks to RESOLVED → crossfade → repeat.
  *
- * This file is lazy-imported by Landing.tsx after first paint.
+ * Mirrors the real surfaces (CanvasView toolbar/sidebar, NewCommentPopover, the
+ * proxy agent's pin/region, the real StatusBadge component). The OUTER frame
+ * (chrome bar + aspect-[16/10] canvas + w-44 sidebar) is held identical to
+ * Landing's DemoPlaceholder so lazy-mount can't shift layout. The light site
+ * is sized in container-query units (cqw) so it scales like a screenshot at any
+ * width without measurement JS. Under reduced motion a single fully-composed
+ * static scene renders. Lazy-imported by Landing.tsx after first paint.
  */
 import {
   animate,
@@ -18,12 +27,22 @@ import {
   useReducedMotion,
   useTransform,
 } from "framer-motion";
+import { ArrowLeft, Link2, Lock, MessageSquare } from "lucide-react";
 import { useEffect, useState } from "react";
+
+import { StatusBadge } from "@/components/dashboard/StatusBadge";
+import { cn } from "@/lib/utils";
+import type { CommentStatus } from "@/types";
 
 const EASE: [number, number, number, number] = [0.16, 1, 0.3, 1];
 
+// The fake client brand's accent — one warm colour, distinct from Orvelle indigo.
+const ACCENT = "#F2663B";
+const ACCENT_TINT = "#FDEAE1";
+const PIN = "#6366F1"; // Orvelle indigo — pins pop against the white client site.
+
 // ---------------------------------------------------------------------------
-// Phase machine
+// Phase machine (unchanged choreography)
 // ---------------------------------------------------------------------------
 
 const PHASES = [
@@ -50,66 +69,197 @@ const INDEX: Record<Phase, number> = Object.fromEntries(
 
 const COMMENT_TEXT = "Logo feels too small here";
 
-// Cursor waypoints, % of the canvas.
+// Cursor waypoints, % of the canvas SITE AREA (below the toolbar). Pin 1 lands
+// on the client logo (top-left); the region is dragged over the feature row.
 const CURSOR = {
-  rest: { left: "92%", top: "96%" },
-  pointA: { left: "62%", top: "26%" },
-  pointB: { left: "37%", top: "60%" },
-  dragEnd: { left: "63%", top: "82%" },
+  rest: { left: "93%", top: "94%" },
+  pointA: { left: "7.5%", top: "8%" },
+  pointB: { left: "7%", top: "78%" },
+  dragEnd: { left: "61%", top: "93%" },
 } as const;
 
-// Region-select geometry, % of the canvas.
-const REGION = { left: 37, top: 60, width: 26, height: 22 } as const;
+// Region-select geometry over the feature row, % of the canvas site area.
+const REGION = { left: 5, top: 76, width: 56, height: 17 } as const;
 
 // ---------------------------------------------------------------------------
 // Scene fragments
 // ---------------------------------------------------------------------------
 
-/** Greyscale wireframe of the client site under review. */
-function WireframeSite() {
+/** The real CanvasView toolbar, scaled. Comment is the active segment. */
+function Toolbar() {
   return (
-    <div aria-hidden="true" className="absolute inset-0">
-      {/* site header */}
-      <div className="absolute inset-x-0 top-0 flex h-[9%] items-center justify-between border-b border-white/[0.07] px-[3%]">
-        <div className="h-[28%] w-[9%] rounded-sm bg-white/10" />
-        <div className="flex w-[30%] items-center justify-end gap-[8%]">
-          <div className="h-[18%] w-[22%] min-h-[3px] rounded-sm bg-white/[0.08]" />
-          <div className="h-[18%] w-[22%] min-h-[3px] rounded-sm bg-white/[0.08]" />
-          <div className="h-[18%] w-[22%] min-h-[3px] rounded-sm bg-white/[0.08]" />
+    <div
+      className="flex shrink-0 items-center justify-between gap-2 border-b border-white/[0.08] bg-[#0C0D0F] px-2.5 py-1.5"
+      aria-hidden="true"
+    >
+      <div className="flex min-w-0 items-center gap-1.5">
+        <span className="flex h-4 w-4 shrink-0 items-center justify-center text-[#A1A1AA]">
+          <ArrowLeft className="h-3 w-3" />
+        </span>
+        <div className="min-w-0">
+          <p className="truncate text-[10px] font-semibold leading-tight text-[#FAFAFA]">
+            Aurora — Homepage{" "}
+            <span className="font-normal text-[#A1A1AA]">· Round 1</span>
+          </p>
+          <p className="truncate font-mono text-[8px] leading-tight text-[#8A8A93]">
+            /
+          </p>
         </div>
       </div>
-      {/* hero copy block */}
-      <div className="absolute left-[3%] top-[16%] w-[38%]">
-        <div className="h-[7px] w-full rounded-sm bg-white/10" />
-        <div className="mt-[6%] h-[7px] w-3/4 rounded-sm bg-white/10" />
-        <div className="mt-[10%] h-[5px] w-5/6 rounded-sm bg-white/[0.06]" />
-        <div className="mt-[4%] h-[5px] w-2/3 rounded-sm bg-white/[0.06]" />
-        <div className="mt-[10%] h-[16px] w-[34%] rounded bg-white/10" />
-      </div>
-      {/* hero image block with wireframe cross */}
-      <div className="absolute right-[3%] top-[14%] h-[32%] w-[50%] rounded border border-white/[0.09]">
-        <svg className="h-full w-full" preserveAspectRatio="none" viewBox="0 0 100 100" fill="none">
-          <line x1="0" y1="0" x2="100" y2="100" stroke="rgba(255,255,255,0.06)" vectorEffect="non-scaling-stroke" />
-          <line x1="100" y1="0" x2="0" y2="100" stroke="rgba(255,255,255,0.06)" vectorEffect="non-scaling-stroke" />
-        </svg>
-      </div>
-      {/* three-card row */}
-      {[3, 35.5, 68].map((left) => (
-        <div
-          key={left}
-          className="absolute h-[36%] w-[29%] rounded border border-white/[0.07] p-[2%]"
-          style={{ left: `${left}%`, top: "56%" }}
-        >
-          <div className="h-[22%] w-[55%] rounded-sm bg-white/[0.07]" />
-          <div className="mt-[8%] h-[8%] w-[85%] rounded-sm bg-white/[0.05]" />
-          <div className="mt-[5%] h-[8%] w-[70%] rounded-sm bg-white/[0.05]" />
+
+      <div className="flex shrink-0 items-center gap-1.5">
+        <div className="flex rounded-md border border-white/[0.08] p-0.5">
+          <span className="rounded px-1.5 py-0.5 text-[8px] font-medium text-[#A1A1AA]">
+            Browse
+          </span>
+          <span className="rounded bg-[#6366F1] px-1.5 py-0.5 text-[8px] font-medium text-white">
+            Comment
+          </span>
         </div>
-      ))}
+        <span className="hidden items-center gap-1 rounded-md border border-white/[0.08] px-1.5 py-0.5 text-[8px] font-medium text-[#A1A1AA] sm:inline-flex">
+          <Link2 className="h-2.5 w-2.5" />
+          Share
+        </span>
+      </div>
     </div>
   );
 }
 
-/** Numbered indigo pin with a spring drop. */
+/**
+ * The "client website" under review — a believable light landing page. Sized in
+ * container-query units so it scales like a real screenshot. Decorative only.
+ */
+function MockClientSite() {
+  return (
+    <div
+      aria-hidden="true"
+      className="absolute inset-0 flex flex-col bg-gradient-to-b from-white to-[#F6F8FA] [container-type:inline-size]"
+    >
+      {/* nav */}
+      <nav className="flex shrink-0 items-center justify-between border-b border-[#EEF1F4] px-[4cqw] py-[1.6cqw]">
+        <div className="flex items-center gap-[1.1cqw]">
+          <div
+            className="h-[2.8cqw] w-[2.8cqw] rounded-[0.8cqw]"
+            style={{ backgroundColor: ACCENT }}
+          />
+          <span className="text-[2cqw] font-semibold tracking-tight text-[#0F172A]">
+            Aurora
+          </span>
+        </div>
+        <div className="flex items-center gap-[2.6cqw]">
+          {["Product", "Features", "Pricing", "About"].map((l) => (
+            <span key={l} className="text-[1.5cqw] font-medium text-[#475569]">
+              {l}
+            </span>
+          ))}
+          <span
+            className="rounded-[0.9cqw] px-[1.8cqw] py-[0.8cqw] text-[1.5cqw] font-semibold text-white"
+            style={{ backgroundColor: ACCENT }}
+          >
+            Get started
+          </span>
+        </div>
+      </nav>
+
+      {/* hero */}
+      <div className="flex min-h-0 flex-1 items-center gap-[3cqw] px-[4cqw] py-[2cqw]">
+        <div className="flex w-[52%] flex-col">
+          <span
+            className="mb-[1.4cqw] inline-flex w-fit items-center gap-[0.8cqw] rounded-full px-[1.4cqw] py-[0.6cqw] text-[1.3cqw] font-medium"
+            style={{ backgroundColor: ACCENT_TINT, color: ACCENT }}
+          >
+            <span
+              className="h-[1cqw] w-[1cqw] rounded-full"
+              style={{ backgroundColor: ACCENT }}
+            />
+            Aurora 2.0 is here
+          </span>
+          <h2 className="text-[4.2cqw] font-semibold leading-[1.08] tracking-[-0.02em] text-[#0F172A]">
+            Build a brand your customers remember
+          </h2>
+          <p className="mt-[1.6cqw] text-[1.7cqw] leading-relaxed text-[#64748B]">
+            The all-in-one studio for modern teams to design, launch, and grow —
+            without the busywork.
+          </p>
+          <div className="mt-[2.4cqw] flex items-center gap-[1.3cqw]">
+            <span
+              className="rounded-[0.9cqw] px-[2.2cqw] py-[1cqw] text-[1.6cqw] font-semibold text-white shadow-sm"
+              style={{ backgroundColor: ACCENT }}
+            >
+              Start free
+            </span>
+            <span className="rounded-[0.9cqw] border border-[#D8DDE3] px-[2.2cqw] py-[1cqw] text-[1.6cqw] font-semibold text-[#334155]">
+              Book a demo
+            </span>
+          </div>
+          <div className="mt-[2.2cqw] flex items-center gap-[1.1cqw]">
+            <div className="flex -space-x-[0.7cqw]">
+              {["#FBBF24", "#34D399", "#60A5FA", "#F472B6"].map((c) => (
+                <span
+                  key={c}
+                  className="h-[2cqw] w-[2cqw] rounded-full border-[0.3cqw] border-white"
+                  style={{ backgroundColor: c }}
+                />
+              ))}
+            </div>
+            <span className="text-[1.2cqw] text-[#94A3B8]">
+              Trusted by 2,000+ teams
+            </span>
+          </div>
+        </div>
+
+        {/* hero visual — a polished product-shot card */}
+        <div
+          className="relative h-[82%] w-[48%] overflow-hidden rounded-[1.6cqw] border border-[#EAEDF1]"
+          style={{
+            background: `linear-gradient(135deg, ${ACCENT}1A, #F4F7FA 62%)`,
+          }}
+        >
+          <div className="absolute left-[8%] top-[11%] h-[15%] w-[42%] rounded-[1.1cqw] bg-white shadow-sm" />
+          <div className="absolute left-[8%] top-[33%] h-[7%] w-[66%] rounded-full bg-white/85" />
+          <div className="absolute left-[8%] top-[45%] h-[7%] w-[52%] rounded-full bg-white/70" />
+          <div
+            className="absolute bottom-[9%] left-[8%] h-[24%] w-[37%] rounded-[1.1cqw] shadow-sm"
+            style={{ backgroundColor: ACCENT }}
+          />
+          <div className="absolute bottom-[9%] right-[8%] h-[36%] w-[40%] rounded-[1.1cqw] bg-white shadow-sm" />
+        </div>
+      </div>
+
+      {/* feature row */}
+      <div className="grid shrink-0 grid-cols-3 gap-[2.4cqw] border-t border-[#EEF1F4] px-[4cqw] py-[2.2cqw]">
+        {[
+          ["Fast by default", "Ship polished pages in minutes, not weeks."],
+          ["Made to scale", "From first launch to millions of visits."],
+          ["Truly yours", "Own every pixel of your brand, end to end."],
+        ].map(([title, desc]) => (
+          <div key={title} className="flex flex-col gap-[0.8cqw]">
+            <div
+              className="flex h-[3.2cqw] w-[3.2cqw] items-center justify-center rounded-[1cqw]"
+              style={{ backgroundColor: ACCENT_TINT }}
+            >
+              <div
+                className="h-[1.3cqw] w-[1.3cqw] rounded-[0.4cqw]"
+                style={{ backgroundColor: ACCENT }}
+              />
+            </div>
+            <span className="text-[1.6cqw] font-semibold text-[#0F172A]">
+              {title}
+            </span>
+            <span className="text-[1.3cqw] leading-snug text-[#64748B]">
+              {desc}
+            </span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * The real agent pin marker: a 24px indigo circle with a white ring and white
+ * number, dropped with a spring. Pops against the light client site.
+ */
 function Pin({
   n,
   left,
@@ -129,15 +279,15 @@ function Pin({
       initial={instant ? false : { scale: 0, y: -14, opacity: 0 }}
       animate={{ scale: 1, y: 0, opacity: 1 }}
       transition={{ type: "spring", stiffness: 420, damping: 22 }}
-      className="absolute z-20 flex h-[18px] w-[18px] -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-[#6366F1] text-[10px] font-semibold leading-none text-white shadow-[0_2px_8px_rgba(0,0,0,0.5)]"
-      style={{ left, top }}
+      className="absolute z-20 flex h-6 w-6 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-2 border-white text-[12px] font-semibold leading-none text-white shadow-[0_2px_6px_rgba(0,0,0,0.35)]"
+      style={{ left, top, backgroundColor: PIN }}
     >
       {n}
     </motion.div>
   );
 }
 
-/** Comment popover anchored next to pin 1, with typing body text. */
+/** NewCommentPopover, scaled: the textarea types the comment in. */
 function Popover({
   show,
   typed,
@@ -153,108 +303,211 @@ function Popover({
     <AnimatePresence>
       {show ? (
         <motion.div
-          initial={instant ? false : { opacity: 0, scale: 0.92, y: 4 }}
+          initial={instant ? false : { opacity: 0, scale: 0.96, y: 4 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.96 }}
-          transition={{ duration: 0.25, ease: EASE }}
-          className="absolute z-30 w-[34%] max-w-[230px] rounded-lg border border-white/10 bg-[#101113] p-2.5 shadow-[0_8px_24px_rgba(0,0,0,0.6)]"
-          style={{ left: "64.5%", top: "30%" }}
+          transition={{ duration: 0.2, ease: EASE }}
+          className="absolute z-30 w-[42%] max-w-[212px] overflow-hidden rounded-xl border border-white/[0.08] bg-[#0C0D0F] shadow-[0_12px_32px_rgba(0,0,0,0.6)]"
+          style={{ left: "12%", top: "15%", transformOrigin: "top left" }}
         >
-          <div className="flex items-center gap-1.5">
-            <span className="flex h-4 w-4 items-center justify-center rounded-full bg-white/10 text-[8px] font-medium text-white/70">
-              S
-            </span>
-            <span className="text-[10px] text-[#71717A]">Sarah · Client</span>
-          </div>
-          <p className="mt-1.5 min-h-[14px] text-[11px] leading-snug text-white/90">
-            {typed}
+          <p className="min-h-[30px] px-2.5 pb-1 pt-2 text-[10px] leading-snug text-[#FAFAFA]">
+            {typed.length ? (
+              typed
+            ) : (
+              <span className="text-[#8A8A93]">Leave your feedback…</span>
+            )}
             {!done ? (
-              <span className="ml-px inline-block h-[11px] w-px translate-y-[2px] bg-white/70" />
+              <span className="ml-px inline-block h-[10px] w-px translate-y-[1.5px] bg-white/70 align-middle" />
             ) : null}
           </p>
+          <div className="flex items-center justify-between gap-2 px-2 pb-1.5 pt-0.5">
+            <span className="pl-0.5 text-[8px] text-[#8A8A93]">⌘↵ to send</span>
+            <div className="flex items-center gap-1">
+              <span className="rounded px-1.5 py-0.5 text-[8px] font-medium text-[#A1A1AA]">
+                Cancel
+              </span>
+              <span className="rounded bg-[#6366F1] px-1.5 py-0.5 text-[8px] font-medium text-white">
+                Comment
+              </span>
+            </div>
+          </div>
         </motion.div>
       ) : null}
     </AnimatePresence>
   );
 }
 
-/** One thread row in the Orvelle sidebar. */
-function ThreadRow({
+/** One row of the real CanvasView sidebar inbox (or its skeleton). */
+function SidebarRow({
   n,
-  title,
-  resolved,
+  author,
+  initials,
+  body,
+  time,
+  status,
   show,
   instant,
 }: {
   n: number;
-  title: string;
-  resolved: boolean;
+  author: string;
+  initials: string;
+  body: string;
+  time: string;
+  status: CommentStatus;
   show: boolean;
   instant: boolean;
 }) {
   return (
-    <motion.div
-      initial={false}
-      animate={{ opacity: show ? 1 : 0.25 }}
-      transition={{ duration: 0.35 }}
-      className="rounded-md border border-white/[0.07] p-2"
-    >
-      <div className="flex items-start gap-1.5">
-        <span
-          className={`mt-px flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded-full text-[8px] font-semibold leading-none ${
-            show ? "bg-[#6366F1] text-white" : "bg-white/10 text-white/40"
-          }`}
-        >
-          {n}
-        </span>
-        <div className="min-w-0">
-          <p className="truncate text-[10px] leading-tight text-white/80">
-            {show ? title : "—"}
-          </p>
-          <div className="mt-1 flex h-[12px] items-center gap-1">
-            <AnimatePresence mode="wait" initial={false}>
-              {resolved ? (
+    <div className="flex gap-2 px-2.5 py-2">
+      <span
+        className={cn(
+          "mt-px flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[10px] font-semibold leading-none",
+          show ? "bg-[#6366F1] text-white" : "bg-white/[0.07] text-transparent",
+        )}
+      >
+        {n}
+      </span>
+      <div className="min-w-0 flex-1">
+        {show ? (
+          <>
+            <div className="flex items-center justify-between gap-1.5">
+              <div className="flex min-w-0 items-center gap-1.5">
+                <span className="flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded-full bg-[#6366F1]/15 text-[7px] font-semibold text-[#A5B4FC]">
+                  {initials}
+                </span>
+                <span className="truncate text-[10px] font-medium text-[#FAFAFA]">
+                  {author}
+                </span>
+              </div>
+              <AnimatePresence mode="wait" initial={false}>
                 <motion.span
-                  key="resolved"
-                  initial={instant ? false : { opacity: 0, y: 3 }}
+                  key={status}
+                  initial={instant ? false : { opacity: 0, y: 2 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.3, ease: EASE }}
-                  className="flex items-center gap-1 font-mono text-[8px] uppercase tracking-[0.15em] text-white"
+                  exit={{ opacity: 0, y: -2 }}
+                  transition={{ duration: 0.22, ease: EASE }}
                 >
-                  <svg viewBox="0 0 10 10" className="h-2.5 w-2.5" fill="none">
-                    <motion.path
-                      d="M2 5.2 L4.2 7.4 L8 3"
-                      stroke="white"
-                      strokeWidth={1.4}
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      initial={instant ? false : { pathLength: 0 }}
-                      animate={{ pathLength: 1 }}
-                      transition={{ duration: 0.35, ease: EASE, delay: 0.1 }}
-                    />
-                  </svg>
-                  Resolved
+                  <StatusBadge status={status} className="text-[8px]" />
                 </motion.span>
-              ) : (
-                <motion.span
-                  key="open"
-                  exit={{ opacity: 0, y: -3 }}
-                  transition={{ duration: 0.2 }}
-                  className="font-mono text-[8px] uppercase tracking-[0.15em] text-[#71717A]"
-                >
-                  Open
-                </motion.span>
-              )}
-            </AnimatePresence>
+              </AnimatePresence>
+            </div>
+            <p className="mt-1 line-clamp-2 text-[10px] leading-snug text-[#A1A1AA]">
+              {body}
+            </p>
+            <span className="mt-0.5 block font-mono text-[8px] text-[#8A8A93]">
+              {time}
+            </span>
+          </>
+        ) : (
+          <div className="space-y-1.5 py-1">
+            <div className="h-1.5 w-2/3 rounded-sm bg-white/[0.07]" />
+            <div className="h-1.5 w-5/6 rounded-sm bg-white/[0.05]" />
           </div>
-        </div>
+        )}
       </div>
-    </motion.div>
+    </div>
+  );
+}
+
+/** The real CanvasView <aside>, scaled and populated like a working inbox. */
+function Sidebar({
+  showA,
+  showB,
+  resolved,
+  instant,
+}: {
+  showA: boolean;
+  showB: boolean;
+  resolved: boolean;
+  instant: boolean;
+}) {
+  return (
+    <div className="hidden w-44 shrink-0 flex-col border-l border-white/[0.08] bg-[#0C0D0F] md:flex">
+      <div className="flex items-center justify-between border-b border-white/[0.08] px-3 pb-2 pt-2.5">
+        <span className="font-mono text-[9px] uppercase tracking-[0.2em] text-[#8A8A93]">
+          Comments
+        </span>
+        <span className="rounded-full bg-white/[0.06] px-1.5 text-[8px] font-medium text-[#A1A1AA]">
+          3
+        </span>
+      </div>
+      <div className="flex flex-wrap items-center gap-1 border-b border-white/[0.08] px-2.5 py-1.5">
+        {["All", "Open", "In progress", "Resolved"].map((f, i) => (
+          <span
+            key={f}
+            className={cn(
+              "rounded-full px-1.5 py-0.5 text-[9px] font-medium",
+              i === 0 ? "bg-[#6366F1] text-white" : "text-[#A1A1AA]",
+            )}
+          >
+            {f}
+          </span>
+        ))}
+      </div>
+      <div className="min-h-0 flex-1 divide-y divide-white/[0.08] overflow-hidden">
+        <SidebarRow
+          n={1}
+          author="Sarah Chen"
+          initials="SC"
+          body="Logo feels too small here"
+          time="2m ago"
+          status={resolved ? "resolved" : "open"}
+          show={showA}
+          instant={instant}
+        />
+        <SidebarRow
+          n={2}
+          author="Sarah Chen"
+          initials="SC"
+          body="Tighten this section spacing"
+          time="just now"
+          status="open"
+          show={showB}
+          instant={instant}
+        />
+        <SidebarRow
+          n={3}
+          author="Mike Ross"
+          initials="MR"
+          body="Love the new CTA colour 👌"
+          time="1h ago"
+          status="resolved"
+          show
+          instant={instant}
+        />
+      </div>
+      <div className="mt-auto flex items-center gap-1.5 border-t border-white/[0.08] px-2.5 py-1.5 text-[9px] text-[#A1A1AA]">
+        <span
+          className="flex h-2.5 w-2.5 shrink-0 items-center justify-center rounded-[3px] border border-[#6366F1] bg-[#6366F1]"
+          aria-hidden="true"
+        >
+          <svg viewBox="0 0 10 10" className="h-2 w-2" fill="none">
+            <path
+              d="M2 5.2 L4.2 7.4 L8 3"
+              stroke="white"
+              strokeWidth={1.5}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+        </span>
+        <MessageSquare className="h-2.5 w-2.5 shrink-0" />
+        Show resolved
+      </div>
+    </div>
   );
 }
 
 /** SVG arrow cursor. */
-function Cursor({ left, top, duration }: { left: string; top: string; duration: number }) {
+function Cursor({
+  left,
+  top,
+  duration,
+}: {
+  left: string;
+  top: string;
+  duration: number;
+}) {
   return (
     <motion.div
       initial={false}
@@ -264,13 +517,12 @@ function Cursor({ left, top, duration }: { left: string; top: string; duration: 
       style={{ left: CURSOR.rest.left, top: CURSOR.rest.top }}
       aria-hidden="true"
     >
-      <svg viewBox="0 0 16 16" className="h-4 w-4 drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]" fill="none">
-        <path
-          d="M3 1.5 L13 8.2 L8.4 9.3 L6.2 14 Z"
-          fill="white"
-          stroke="black"
-          strokeWidth={0.75}
-        />
+      <svg
+        viewBox="0 0 16 16"
+        className="h-4 w-4 drop-shadow-[0_1px_2px_rgba(0,0,0,0.55)]"
+        fill="none"
+      >
+        <path d="M3 1.5 L13 8.2 L8.4 9.3 L6.2 14 Z" fill="white" stroke="black" strokeWidth={0.75} />
       </svg>
     </motion.div>
   );
@@ -314,16 +566,11 @@ export default function HeroDemo() {
     return () => clearInterval(interval);
   }, [phase, reduced]);
 
-  // Region-select drag: animate width/height motion values; derive the badge.
+  // Region-select drag: animate width/height motion values.
   const regionW = useMotionValue(0);
   const regionH = useMotionValue(0);
   const regionWPct = useTransform(regionW, (w) => `${w}%`);
   const regionHPct = useTransform(regionH, (h) => `${h}%`);
-  // Synthetic but plausible px readout for the dimension badge.
-  const dims = useTransform([regionW, regionH], (values) => {
-    const [w, h] = values as [number, number];
-    return `${Math.round(w * 7.2)} × ${Math.round(h * 5.4)}`;
-  });
 
   useEffect(() => {
     if (reduced) return;
@@ -342,22 +589,35 @@ export default function HeroDemo() {
     return undefined;
   }, [phase, reduced, regionW, regionH]);
 
-  // Static composed scene for reduced motion: everything placed, no timers.
+  // Static composed scene for reduced motion: a fully-populated frame — both
+  // pins placed, region drawn, the comment written, the sidebar inbox filled.
   const isStatic = Boolean(reduced);
 
   const cursorTarget =
-    phase === "cursorA" || phase === "click" || phase === "pinA" || phase === "popover" || phase === "typing" || phase === "hold1"
+    phase === "cursorA" ||
+    phase === "click" ||
+    phase === "pinA" ||
+    phase === "popover" ||
+    phase === "typing" ||
+    phase === "hold1"
       ? CURSOR.pointA
       : phase === "cursorB"
         ? CURSOR.pointB
-        : phase === "drag" || phase === "pinB" || phase === "resolve" || phase === "hold2" || phase === "fade"
+        : phase === "drag" ||
+            phase === "pinB" ||
+            phase === "resolve" ||
+            phase === "hold2" ||
+            phase === "fade"
           ? CURSOR.dragEnd
           : CURSOR.rest;
   const cursorDuration = phase === "cursorA" || phase === "cursorB" ? 0.85 : 0.9;
 
   const showPinA = isStatic || after("pinA");
   const showPinB = isStatic || after("pinB");
-  const showPopover = isStatic || (after("popover") && !after("cursorB"));
+  // Static renders the loop's settled END state: comment submitted (popover
+  // closed) and thread 1 resolved — a coherent screenshot, not a mid-edit
+  // moment with a compose popover hanging over an already-resolved comment.
+  const showPopover = !isStatic && after("popover") && !after("cursorB");
   const popoverText = isStatic ? COMMENT_TEXT : typed;
   const typingDone = isStatic || popoverText.length === COMMENT_TEXT.length;
   const showRegion = isStatic || after("drag");
@@ -367,91 +627,104 @@ export default function HeroDemo() {
     <div
       className="relative overflow-hidden rounded-xl border border-white/10 bg-[#0A0B0D]"
       role="img"
-      aria-label="Animated demo of Orvelle: a client clicks the page to drop a numbered comment pin, drags to select a region, and the designer resolves the thread"
+      aria-label="Animated demo of the Orvelle review canvas reviewing a client website: a client clicks the logo to drop a numbered comment pin, a feedback popover types in, the thread fills the sidebar inbox, a region is selected for a second pin, and the first thread is marked resolved"
     >
       {/* browser chrome */}
-      <div className="flex h-9 items-center gap-3 border-b border-white/[0.08] px-3.5">
-        <div className="flex gap-1.5" aria-hidden="true">
-          <span className="h-2 w-2 rounded-full bg-white/10" />
-          <span className="h-2 w-2 rounded-full bg-white/10" />
-          <span className="h-2 w-2 rounded-full bg-white/10" />
+      <div className="flex h-9 items-center border-b border-white/[0.08] px-3.5">
+        <div className="flex w-16 items-center gap-2" aria-hidden="true">
+          <span className="h-[11px] w-[11px] rounded-full bg-[#FF5F57]" />
+          <span className="h-[11px] w-[11px] rounded-full bg-[#FEBC2E]" />
+          <span className="h-[11px] w-[11px] rounded-full bg-[#28C840]" />
         </div>
-        <div className="mx-auto rounded bg-white/[0.05] px-2.5 py-0.5 font-mono text-[10px] text-[#71717A]">
+        <div className="mx-auto flex items-center gap-1.5 rounded-md bg-white/[0.05] px-3 py-1 font-mono text-[10px] text-[#A1A1AA]">
+          <Lock className="h-2.5 w-2.5 text-[#8A8A93]" />
           orvellehq.com/r/x7k2m9
         </div>
-        <div className="w-9" aria-hidden="true" />
+        <div className="w-16" aria-hidden="true" />
       </div>
 
       <div className="relative flex">
-        {/* review canvas */}
-        <div className="relative aspect-[16/10] min-w-0 flex-1 bg-[#0C0D0F]">
-          <WireframeSite />
+        {/* canvas column: real toolbar + the light client site with overlays */}
+        <div className="relative flex aspect-[16/10] min-w-0 flex-1 flex-col bg-[#0C0D0F]">
+          <Toolbar />
 
-          {/* click ripple at point A — spans two phases so the fade completes */}
-          {!isStatic && (phase === "click" || phase === "pinA") ? (
-            <motion.span
-              initial={{ scale: 0.3, opacity: 0.9 }}
-              animate={{ scale: 2.2, opacity: 0 }}
-              transition={{ duration: 0.45, ease: "easeOut" }}
-              className="absolute z-10 h-6 w-6 -translate-x-1/2 -translate-y-1/2 rounded-full border border-white/50"
-              style={{ left: CURSOR.pointA.left, top: CURSOR.pointA.top }}
-              aria-hidden="true"
+          <div className="relative min-h-0 flex-1 overflow-hidden">
+            <MockClientSite />
+
+            {/* click ripple at point A — spans two phases so the fade completes */}
+            {!isStatic && (phase === "click" || phase === "pinA") ? (
+              <motion.span
+                initial={{ scale: 0.3, opacity: 0.9 }}
+                animate={{ scale: 2.2, opacity: 0 }}
+                transition={{ duration: 0.45, ease: "easeOut" }}
+                className="absolute z-10 h-6 w-6 -translate-x-1/2 -translate-y-1/2 rounded-full border border-[#6366F1]/70"
+                style={{ left: CURSOR.pointA.left, top: CURSOR.pointA.top }}
+                aria-hidden="true"
+              />
+            ) : null}
+
+            <Pin
+              n={1}
+              left={CURSOR.pointA.left}
+              top={CURSOR.pointA.top}
+              show={showPinA}
+              instant={isStatic}
             />
-          ) : null}
+            <Popover
+              show={showPopover}
+              typed={popoverText}
+              done={typingDone}
+              instant={isStatic}
+            />
 
-          <Pin n={1} left={CURSOR.pointA.left} top={CURSOR.pointA.top} show={showPinA} instant={isStatic} />
-          <Popover show={showPopover} typed={popoverText} done={typingDone} instant={isStatic} />
+            {/* region-select rectangle (real agent styling) */}
+            {showRegion ? (
+              <motion.div
+                className="absolute z-10 rounded-[2px] border-[1.5px] border-[#6366F1] bg-[rgba(99,102,241,0.10)]"
+                style={
+                  isStatic
+                    ? {
+                        left: `${REGION.left}%`,
+                        top: `${REGION.top}%`,
+                        width: `${REGION.width}%`,
+                        height: `${REGION.height}%`,
+                      }
+                    : {
+                        left: `${REGION.left}%`,
+                        top: `${REGION.top}%`,
+                        width: regionWPct,
+                        height: regionHPct,
+                      }
+                }
+                aria-hidden="true"
+              />
+            ) : null}
 
-          {/* region-select rectangle + live dimension badge */}
-          {showRegion ? (
-            <motion.div
-              className="absolute z-10 border border-dashed border-white/40 bg-white/[0.03]"
-              style={
-                isStatic
-                  ? {
-                      left: `${REGION.left}%`,
-                      top: `${REGION.top}%`,
-                      width: `${REGION.width}%`,
-                      height: `${REGION.height}%`,
-                    }
-                  : {
-                      left: `${REGION.left}%`,
-                      top: `${REGION.top}%`,
-                      width: regionWPct,
-                      height: regionHPct,
-                    }
-              }
-              aria-hidden="true"
-            >
-              <span className="absolute -bottom-5 right-0 rounded-sm bg-white/10 px-1 py-px font-mono text-[8px] tabular-nums text-white/70">
-                {isStatic ? (
-                  `${Math.round(REGION.width * 7.2)} × ${Math.round(REGION.height * 5.4)}`
-                ) : (
-                  <motion.span>{dims}</motion.span>
-                )}
-              </span>
-            </motion.div>
-          ) : null}
+            <Pin
+              n={2}
+              left={`${REGION.left}%`}
+              top={`${REGION.top}%`}
+              show={showPinB}
+              instant={isStatic}
+            />
 
-          <Pin n={2} left={`${REGION.left}%`} top={`${REGION.top}%`} show={showPinB} instant={isStatic} />
-
-          {!isStatic ? (
-            <Cursor left={cursorTarget.left} top={cursorTarget.top} duration={cursorDuration} />
-          ) : null}
-        </div>
-
-        {/* Orvelle sidebar — hidden on small screens to keep the demo legible */}
-        <div className="hidden w-44 shrink-0 flex-col gap-2 border-l border-white/[0.08] p-3 md:flex">
-          <span className="font-mono text-[9px] uppercase tracking-[0.2em] text-[#52525B]">
-            Comments
-          </span>
-          <ThreadRow n={1} title="Logo feels too small" resolved={resolved} show={showPinA} instant={isStatic} />
-          <ThreadRow n={2} title="Tighten this section" resolved={false} show={showPinB} instant={isStatic} />
-          <div className="mt-auto rounded-md border border-white/[0.05] p-2" aria-hidden="true">
-            <div className="h-1.5 w-3/4 rounded-sm bg-white/[0.05]" />
-            <div className="mt-1.5 h-1.5 w-1/2 rounded-sm bg-white/[0.05]" />
+            {!isStatic ? (
+              <Cursor
+                left={cursorTarget.left}
+                top={cursorTarget.top}
+                duration={cursorDuration}
+              />
+            ) : null}
           </div>
         </div>
+
+        {/* the real sidebar inbox — hidden on small screens to keep it legible */}
+        <Sidebar
+          showA={showPinA}
+          showB={showPinB}
+          resolved={resolved}
+          instant={isStatic}
+        />
 
         {/* crossfade between loops — covers canvas AND sidebar so the
             thread-state reset is never visible */}
