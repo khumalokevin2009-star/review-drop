@@ -10,7 +10,7 @@ import uuid
 from datetime import datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import TIMESTAMP, Boolean, ForeignKey, String
+from sqlalchemy import TIMESTAMP, Boolean, ForeignKey, Integer, String
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -40,6 +40,17 @@ class Review(UUIDMixin, TimestampMixin, Base):
     )
     expires_at: Mapped[datetime | None] = mapped_column(
         TIMESTAMP(timezone=True), nullable=True
+    )
+
+    # New-comment email batching (CLAUDE.md Section 11). `last_notified_at` is
+    # when the owner was last emailed about this review; `pending_comment_count`
+    # is the number of client comments accumulated since then. Together they let
+    # the notifier debounce/coalesce a burst into one email per window.
+    last_notified_at: Mapped[datetime | None] = mapped_column(
+        TIMESTAMP(timezone=True), nullable=True
+    )
+    pending_comment_count: Mapped[int] = mapped_column(
+        Integer, nullable=False, server_default="0", default=0
     )
 
     # Relationships

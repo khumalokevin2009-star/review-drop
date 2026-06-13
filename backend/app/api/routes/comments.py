@@ -50,6 +50,7 @@ from app.schemas.comment import (
     CommentStatus,
     CommentStatusUpdate,
 )
+from app.services.email_notifications import notify_new_guest_comment
 from app.services.screenshot_service import capture_comment_screenshot
 
 logger = logging.getLogger(__name__)
@@ -436,6 +437,9 @@ async def create_guest_comment(
         background_tasks.add_task(
             capture_comment_screenshot, comment.id, comment.page_url
         )
+    # Notify the project owner that a client left feedback (debounced/batched).
+    # Best-effort and post-response: never blocks or breaks comment creation.
+    background_tasks.add_task(notify_new_guest_comment, comment.id)
     return _to_read(await _load_for_read(db, comment.id), is_mine=True)
 
 

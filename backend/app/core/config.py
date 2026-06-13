@@ -51,9 +51,15 @@ class Settings(BaseSettings):
     STRIPE_STUDIO_MONTHLY_PRICE_ID: str | None = None
     STRIPE_STUDIO_ANNUAL_PRICE_ID: str | None = None
 
-    # Resend (optional until email is wired up)
+    # Resend (transactional email — CLAUDE.md Section 11)
     RESEND_API_KEY: str | None = None
-    EMAIL_FROM: str = "hello@orvelle.com"
+    EMAIL_FROM: str = "Orvelle <hello@orvellehq.com>"
+    # Global kill-switch: when false (or RESEND_API_KEY unset) the email service
+    # no-ops gracefully so dev/tests never send real mail.
+    EMAIL_ENABLED: bool = True
+    # Debounce window for new-comment notifications: a burst of client comments
+    # on one review collapses into a single email per this many minutes.
+    EMAIL_BATCH_WINDOW_MINUTES: int = 5
 
     # Sentry (optional)
     SENTRY_DSN: str | None = None
