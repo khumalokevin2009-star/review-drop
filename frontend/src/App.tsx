@@ -8,9 +8,12 @@ import Login from "@/pages/auth/Login";
 import Register from "@/pages/auth/Register";
 import Dashboard from "@/pages/dashboard/Dashboard";
 
-// Code-split the marketing page (it carries framer-motion) so the
+// Code-split the marketing pages (they carry framer-motion) so the
 // app bundle stays lean for logged-in users.
 const Landing = lazy(() => import("@/pages/landing/Landing"));
+const PricingPage = lazy(() => import("@/pages/landing/PricingPage"));
+const FaqPage = lazy(() => import("@/pages/landing/FaqPage"));
+const ContactPage = lazy(() => import("@/pages/landing/ContactPage"));
 // Code-split the canvas (iframe bridge + pin system) — only loaded when reviewing.
 const CanvasView = lazy(() => import("@/pages/canvas/CanvasView"));
 const ProjectView = lazy(() => import("@/pages/project/ProjectView"));
@@ -24,6 +27,32 @@ export default function App() {
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
       <Route path="/forgot-password" element={<ForgotPassword />} />
+
+      {/* Public marketing pages */}
+      <Route
+        path="/pricing"
+        element={
+          <Suspense fallback={<LoadingSpinner />}>
+            <PricingPage />
+          </Suspense>
+        }
+      />
+      <Route
+        path="/faq"
+        element={
+          <Suspense fallback={<LoadingSpinner />}>
+            <FaqPage />
+          </Suspense>
+        }
+      />
+      <Route
+        path="/contact"
+        element={
+          <Suspense fallback={<LoadingSpinner />}>
+            <ContactPage />
+          </Suspense>
+        }
+      />
 
       {/* Public guest review canvas (no auth — slug-gated). */}
       <Route
