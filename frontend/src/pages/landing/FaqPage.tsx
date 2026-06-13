@@ -12,21 +12,21 @@ import { faqs } from "./content";
 import {
   BrandDot,
   FaqAccordion,
-  HAIRLINE,
   MonoLabel,
   MotionLink,
+  PageDepth,
   pillGhost,
   pressProps,
   Reveal,
   RevealHeading,
   SECTION_X,
-  SectionRule,
 } from "./ui";
 
 export default function FaqPage() {
   return (
-    <div className="min-h-screen overflow-x-clip bg-[#08090A] font-sans text-white antialiased selection:bg-white/20">
-      <div className={cn("mx-auto w-full max-w-[1400px] border-x", HAIRLINE)}>
+    <div className="relative min-h-screen overflow-x-clip bg-[#08090A] font-sans text-white antialiased selection:bg-white/20">
+      <PageDepth />
+      <div className="mx-auto w-full max-w-[1680px]">
         <Nav />
         <main>
           <section className={cn("pb-24 pt-20 md:pt-28", SECTION_X)}>
@@ -55,7 +55,6 @@ export default function FaqPage() {
           </section>
 
           <section>
-            <SectionRule />
             <div className={cn("py-20", SECTION_X)}>
               <div className="flex flex-col gap-8 sm:flex-row sm:items-center sm:justify-between">
                 <h2 className="text-2xl font-medium tracking-tight text-white md:text-3xl">

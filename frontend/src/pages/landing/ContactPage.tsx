@@ -13,6 +13,7 @@ import {
   focusRing,
   HAIRLINE,
   MonoLabel,
+  PageDepth,
   pressProps,
   Reveal,
   RevealHeading,
@@ -21,8 +22,9 @@ import {
 
 export default function ContactPage() {
   return (
-    <div className="min-h-screen overflow-x-clip bg-[#08090A] font-sans text-white antialiased selection:bg-white/20">
-      <div className={cn("mx-auto w-full max-w-[1400px] border-x", HAIRLINE)}>
+    <div className="relative min-h-screen overflow-x-clip bg-[#08090A] font-sans text-white antialiased selection:bg-white/20">
+      <PageDepth />
+      <div className="mx-auto w-full max-w-[1680px]">
         <Nav />
         <main>
           <section className={cn("pb-32 pt-20 md:pt-28", SECTION_X)}>

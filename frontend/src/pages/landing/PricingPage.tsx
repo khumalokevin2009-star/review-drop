@@ -12,6 +12,7 @@ import {
   HAIRLINE,
   MonoLabel,
   MotionLink,
+  PageDepth,
   pillGhost,
   pillWhite,
   pressProps,
@@ -20,7 +21,6 @@ import {
   RevealHeading,
   RevealItem,
   SECTION_X,
-  SectionRule,
 } from "./ui";
 
 function PlanCards() {
@@ -149,8 +149,9 @@ function PlanMatrix() {
 
 export default function PricingPage() {
   return (
-    <div className="min-h-screen overflow-x-clip bg-[#08090A] font-sans text-white antialiased selection:bg-white/20">
-      <div className={cn("mx-auto w-full max-w-[1400px] border-x", HAIRLINE)}>
+    <div className="relative min-h-screen overflow-x-clip bg-[#08090A] font-sans text-white antialiased selection:bg-white/20">
+      <PageDepth />
+      <div className="mx-auto w-full max-w-[1680px]">
         <Nav />
         <main>
           <section className={cn("pb-24 pt-20 md:pt-28", SECTION_X)}>
@@ -173,7 +174,6 @@ export default function PricingPage() {
           </section>
 
           <section>
-            <SectionRule />
             <div className={cn("py-24", SECTION_X)}>
               <div className="grid gap-12 md:grid-cols-[1fr_2fr] md:gap-16">
                 <Reveal>

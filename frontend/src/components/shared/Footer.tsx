@@ -7,8 +7,6 @@ import { Link } from "react-router-dom";
 import { Logo } from "@/components/shared/Logo";
 import { cn } from "@/lib/utils";
 
-const HAIRLINE = "border-white/[0.08]";
-
 const focusRing =
   "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6366F1] focus-visible:ring-offset-2 focus-visible:ring-offset-[#08090A]";
 
@@ -23,7 +21,7 @@ const FOOTER_LINKS = [
 
 export function Footer() {
   return (
-    <footer className={cn("border-t px-8 py-12 md:px-16", HAIRLINE)}>
+    <footer className="px-8 pb-12 pt-16 md:px-16">
       <div className="flex flex-col gap-8 lg:flex-row lg:items-center lg:justify-between">
         <div className="flex items-center gap-4">
           <Link

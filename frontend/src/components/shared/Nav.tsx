@@ -62,8 +62,11 @@ export function Nav() {
     <header
       className={cn(
         "sticky top-0 z-40 border-b transition-colors duration-300",
-        HAIRLINE,
-        scrolled || open ? "bg-[#08090A]/85 backdrop-blur-md" : "bg-transparent",
+        // Open edges at rest; the hairline only appears once the nav overlaps
+        // content on scroll (the 1px border is always present → no layout shift).
+        scrolled || open
+          ? cn(HAIRLINE, "bg-[#08090A]/85 backdrop-blur-md")
+          : "border-transparent bg-transparent",
       )}
     >
       <nav className="relative flex h-16 items-center justify-between px-6 md:px-10">

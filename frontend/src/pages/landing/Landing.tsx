@@ -1,10 +1,11 @@
 /**
  * Marketing landing page — dark editorial design, distinctly Orvelle.
  *
- * Layout: a max-w-[1400px] "graph paper" frame with full-height hairlines.
- * The hero demo stands on a lit stage — a horizon glow rising from the
- * frame's bottom edge and a perspective floor plane fading to black — and
- * settles flat from a slight perspective lift as it scrolls into view.
+ * Layout: an open-edge max-w-[1680px] column (no ruled frame; sections divide
+ * by space alone) on a page carrying a near-imperceptible cool depth gradient.
+ * The hero demo commands a lit stage — a horizon glow rising behind it and a
+ * perspective floor fading to black — and settles flat from a slight
+ * perspective lift as it scrolls into view.
  *
  * Indigo #6366F1 is the brand signature: logo dot, pin markers, indigo full
  * stops on key headlines, the highlighted pricing border, focus rings, and
@@ -47,6 +48,7 @@ import {
   HAIRLINE,
   MonoLabel,
   MotionLink,
+  PageDepth,
   pillGhost,
   pillWhite,
   PinChip,
@@ -56,7 +58,6 @@ import {
   RevealHeading,
   RevealItem,
   SECTION_X,
-  SectionRule,
 } from "./ui";
 
 // The ambient demo carries its own animation machinery — lazy-mount it after
@@ -148,16 +149,19 @@ function HeroStage() {
   const glowOpacity = useTransform(scrollYProgress, [0, 1], [0.45, 1]);
 
   return (
-    <div id="demo" className={cn("relative scroll-mt-24 pb-36 md:pb-52", SECTION_X)}>
+    <div
+      id="demo"
+      className="relative scroll-mt-24 px-4 pb-40 md:px-8 md:pb-56"
+    >
       <div ref={stageRef} className="relative">
-        {/* horizon glow behind the frame's lower half */}
+        {/* horizon glow rising behind the demo — the stage light */}
         <motion.div
           aria-hidden="true"
-          className="pointer-events-none absolute inset-x-0 -bottom-32 z-0 h-72"
+          className="pointer-events-none absolute inset-x-0 -bottom-28 z-0 h-[26rem]"
           style={{
             ...(reduced ? null : { opacity: glowOpacity }),
             background:
-              "radial-gradient(ellipse 52% 58% at 50% 22%, rgba(255,255,255,0.10) 0%, rgba(99,102,241,0.05) 42%, transparent 72%)",
+              "radial-gradient(ellipse 58% 68% at 50% 32%, rgba(255,255,255,0.13) 0%, rgba(99,102,241,0.08) 38%, transparent 70%)",
           }}
         />
 
@@ -175,20 +179,20 @@ function HeroStage() {
           )}
         </motion.div>
 
-        {/* light pool directly under the frame */}
+        {/* contact light pool — the demo meeting the surface */}
         <div
           aria-hidden="true"
-          className="pointer-events-none absolute inset-x-8 top-full z-0 h-12 -translate-y-1"
+          className="pointer-events-none absolute inset-x-6 top-full z-0 h-16 -translate-y-1.5"
           style={{
             background:
-              "radial-gradient(ellipse 50% 100% at 50% 0%, rgba(255,255,255,0.13), transparent 70%)",
+              "radial-gradient(ellipse 54% 100% at 50% 0%, rgba(255,255,255,0.16), transparent 72%)",
           }}
         />
 
-        {/* perspective floor fading to black */}
+        {/* perspective floor / reflection plane fading to black */}
         <div
           aria-hidden="true"
-          className="pointer-events-none absolute inset-x-0 top-full z-0 h-64 md:h-80"
+          className="pointer-events-none absolute inset-x-0 top-full z-0 h-72 md:h-96"
         >
           <div
             className="h-full w-full"
@@ -196,7 +200,7 @@ function HeroStage() {
               transform: "perspective(620px) rotateX(54deg)",
               transformOrigin: "top center",
               background:
-                "linear-gradient(to bottom, rgba(255,255,255,0.07) 0%, rgba(255,255,255,0.018) 42%, transparent 78%)",
+                "linear-gradient(to bottom, rgba(255,255,255,0.09) 0%, rgba(255,255,255,0.022) 42%, transparent 80%)",
               maskImage:
                 "radial-gradient(ellipse 65% 95% at 50% 0%, black 25%, transparent 98%)",
               WebkitMaskImage:
@@ -256,7 +260,6 @@ function Hero() {
 function Editorial() {
   return (
     <section>
-      <SectionRule />
       <div className={cn("py-24 md:py-32", SECTION_X)}>
         <Reveal className="md:ml-auto md:max-w-3xl">
           <p className="text-[clamp(2rem,4vw,3.25rem)] font-medium leading-[1.15] tracking-tight">
@@ -282,7 +285,6 @@ function Editorial() {
 function HowItWorks() {
   return (
     <section id="how" className="scroll-mt-20">
-      <SectionRule />
       <div className={cn("py-24", SECTION_X)}>
         <div className="grid gap-12 md:grid-cols-[1fr_2fr] md:gap-16">
           <Reveal>
@@ -366,7 +368,6 @@ const features = [
 function FeatureGrid() {
   return (
     <section>
-      <SectionRule />
       <div className={cn("py-24", SECTION_X)}>
         <Reveal>
           <MonoLabel>Everything you need, nothing you don&rsquo;t</MonoLabel>
@@ -529,7 +530,6 @@ const trio = [
 function Trio() {
   return (
     <section>
-      <SectionRule />
       <RevealGroup className="grid divide-y divide-white/[0.08] md:grid-cols-3 md:divide-x md:divide-y-0">
         {trio.map(({ n, title, caption, Tile }) => (
           <RevealItem key={n} className="px-8 py-12 md:px-10 md:py-14">
@@ -555,7 +555,6 @@ function Trio() {
 function Comparison() {
   return (
     <section>
-      <SectionRule />
       <div className={cn("py-24", SECTION_X)}>
         <Reveal>
           <MonoLabel>The difference</MonoLabel>
@@ -621,7 +620,6 @@ function Comparison() {
 function PricingTeaser() {
   return (
     <section>
-      <SectionRule />
       <div className={cn("py-24", SECTION_X)}>
         <Reveal>
           <MonoLabel>Pricing</MonoLabel>
@@ -676,7 +674,6 @@ function PricingTeaser() {
 function FaqTeaser() {
   return (
     <section>
-      <SectionRule />
       <div className={cn("py-24", SECTION_X)}>
         <div className="grid gap-12 md:grid-cols-[1fr_2fr] md:gap-16">
           <Reveal>
@@ -720,7 +717,6 @@ function FaqTeaser() {
 function FinalCta() {
   return (
     <section>
-      <SectionRule />
       <div className={cn("py-28 md:py-40", SECTION_X)}>
         <div className="flex flex-col gap-12 md:flex-row md:items-end md:justify-between">
           <RevealHeading
@@ -780,9 +776,10 @@ export default function Landing() {
   }
 
   return (
-    <div className="min-h-screen overflow-x-clip bg-[#08090A] font-sans text-white antialiased selection:bg-white/20">
-      {/* the ruled frame: hairlines run the full page height */}
-      <div className={cn("mx-auto w-full max-w-[1400px] border-x", HAIRLINE)}>
+    <div className="relative min-h-screen overflow-x-clip bg-[#08090A] font-sans text-white antialiased selection:bg-white/20">
+      <PageDepth />
+      {/* Open-edge column — no ruled frame; sections separate by space alone. */}
+      <div className="mx-auto w-full max-w-[1680px]">
         <Nav />
         <main>
           <Hero />

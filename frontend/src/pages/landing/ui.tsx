@@ -33,6 +33,25 @@ export const dotGrid = {
 /** Frame paddings — kept in one place so every section breathes identically. */
 export const SECTION_X = "px-8 md:px-16";
 
+/**
+ * Page depth — a near-imperceptible cool lift fading from the top of the page
+ * down to pure #08090A, giving the flat dark surface quiet depth (Linear /
+ * Vercel). Purely decorative and static (fine under reduced motion); sits behind
+ * all content, so the page root it's dropped into must be `relative`.
+ */
+export function PageDepth() {
+  return (
+    <div
+      aria-hidden="true"
+      className="pointer-events-none absolute inset-0 -z-10"
+      style={{
+        background:
+          "linear-gradient(180deg, rgba(112,120,180,0.05) 0%, rgba(112,120,180,0.012) 24%, transparent 56%)",
+      }}
+    />
+  );
+}
+
 // ---------------------------------------------------------------------------
 // Brand marks
 // ---------------------------------------------------------------------------
@@ -235,25 +254,6 @@ export function RevealHeading({
         ))}
       </motion.span>
     </Comp>
-  );
-}
-
-/**
- * Hairline rule that draws in (scaleX 0→1, origin-left) when it enters view.
- * Replaces border-t on major sections; occupies a constant 1px — zero shift.
- */
-export function SectionRule() {
-  const reduced = useReducedMotion();
-  if (reduced) return <div aria-hidden="true" className="h-px w-full bg-white/[0.08]" />;
-  return (
-    <motion.div
-      aria-hidden="true"
-      className="h-px w-full origin-left bg-white/[0.08]"
-      initial={{ scaleX: 0 }}
-      whileInView={{ scaleX: 1 }}
-      viewport={{ once: true, amount: 1 }}
-      transition={{ duration: 0.8, ease: EASE }}
-    />
   );
 }
 
