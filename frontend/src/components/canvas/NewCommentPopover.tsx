@@ -126,7 +126,7 @@ export function NewCommentPopover({
       initial={reduceMotion ? { opacity: 0 } : { opacity: 0, scale: 0.96 }}
       animate={{ opacity: 1, scale: 1 }}
       transition={{ duration: 0.15, ease: [0.16, 1, 0.3, 1] }}
-      className="fixed z-30 overflow-hidden rounded-xl border border-border bg-surface shadow-xl ring-1 ring-black/5"
+      className="fixed z-30 overflow-hidden rounded-xl border border-border bg-surface shadow-2xl shadow-black/50"
       style={{ left, top, width: POPOVER_WIDTH, transformOrigin: "top left" }}
     >
       {isRegion ? (

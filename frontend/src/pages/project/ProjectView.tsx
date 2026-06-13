@@ -207,7 +207,7 @@ function ReviewRow({ review, projectId }: ReviewRowProps) {
 
   return (
     <>
-      <Card className="flex flex-col gap-3 p-4">
+      <Card className="flex flex-col gap-3 p-4 transition-colors duration-200 hover:border-white/[0.14]">
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0">
             <div className="flex items-center gap-2">
@@ -422,7 +422,7 @@ function ProjectHeader({ project }: { project: Project }) {
               href={project.url}
               target="_blank"
               rel="noreferrer"
-              className="mt-1 inline-flex items-center gap-1 font-mono text-xs text-brand hover:underline"
+              className="mt-1 inline-flex items-center gap-1 font-mono text-xs text-[#818CF8] hover:underline"
             >
               {project.url}
               <ExternalLink className="h-3 w-3" />

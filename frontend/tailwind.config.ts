@@ -2,10 +2,11 @@ import animate from "tailwindcss-animate";
 import type { Config } from "tailwindcss";
 
 /**
- * Orvelle design system — CLAUDE.md Section 10.
- * Colours are defined as CSS variables in src/index.css and
- * referenced here so Tailwind utilities (bg-brand, text-status-open, …)
- * map 1:1 to the canonical palette.
+ * Orvelle design system — dark premium skin shared with the landing page.
+ * Semantic tokens (bg-surface, border-border, text-text-*, bg-brand, …) map
+ * the whole post-login app to the near-black palette; the landing and auth
+ * pages use hardcoded hex of the same values. Status colours stay functional
+ * (CLAUDE.md Section 9/10): open/in-progress/resolved = red/amber/green.
  */
 export default {
   darkMode: ["class"],
@@ -17,16 +18,17 @@ export default {
           DEFAULT: "#6366F1",
           hover: "#4F46E5",
         },
-        background: "#FAFAFA",
+        background: "#08090A",
         surface: {
-          DEFAULT: "#FFFFFF",
-          elevated: "#F4F4F5",
+          DEFAULT: "#0C0D0F",
+          elevated: "#101113",
         },
-        border: "#E4E4E7",
+        // hairline — matches the landing's border-white/[0.08]
+        border: "rgba(255,255,255,0.08)",
         text: {
-          primary: "#09090B",
-          secondary: "#71717A",
-          muted: "#A1A1AA",
+          primary: "#FAFAFA",
+          secondary: "#A1A1AA",
+          muted: "#8A8A93",
         },
         status: {
           open: "#EF4444",
@@ -34,7 +36,7 @@ export default {
           resolved: "#22C55E",
         },
         pin: "#6366F1",
-        destructive: "#EF4444",
+        destructive: "#F87171",
         success: "#22C55E",
       },
       fontFamily: {

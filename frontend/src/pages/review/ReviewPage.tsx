@@ -20,6 +20,7 @@ import { z } from "zod";
 
 import { CanvasFrame } from "@/components/canvas/CanvasFrame";
 import { CommentThread } from "@/components/canvas/CommentThread";
+import { Logo } from "@/components/shared/Logo";
 import {
   numberCommentsForPage,
   repliesOf,
@@ -163,7 +164,7 @@ export default function ReviewPage() {
   if (metaQuery.isError || !metaQuery.data) {
     return (
       <div className="flex h-screen items-center justify-center bg-background p-6">
-        <div className="max-w-sm rounded-lg border border-border bg-surface p-6 text-center shadow-sm">
+        <div className="max-w-sm rounded-xl border border-border bg-surface p-6 text-center">
           <p className="text-sm font-medium text-text-primary">{metaErrorMessage(metaQuery.error)}</p>
           <p className="mt-1 text-sm text-text-secondary">
             Ask the designer for an updated link.
@@ -252,7 +253,7 @@ export default function ReviewPage() {
               type="button"
               onClick={() => setMode("comment")}
               className={cn(
-                "rounded px-2.5 py-1 text-xs font-medium",
+                "rounded px-2.5 py-1 text-xs font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand",
                 mode === "comment" ? "bg-brand text-white" : "text-text-secondary",
               )}
             >
@@ -262,7 +263,7 @@ export default function ReviewPage() {
               type="button"
               onClick={() => setMode("browse")}
               className={cn(
-                "rounded px-2.5 py-1 text-xs font-medium",
+                "rounded px-2.5 py-1 text-xs font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand",
                 mode === "browse" ? "bg-brand text-white" : "text-text-secondary",
               )}
             >
@@ -277,9 +278,9 @@ export default function ReviewPage() {
         href="/"
         target="_blank"
         rel="noreferrer"
-        className="pointer-events-auto absolute bottom-4 right-4 rounded-full border border-border bg-surface px-3 py-1.5 text-xs text-text-secondary shadow-lg transition-colors hover:text-text-primary"
+        className="pointer-events-auto absolute bottom-4 right-4 inline-flex items-center gap-1.5 rounded-full border border-border bg-surface px-3 py-1.5 text-xs text-text-muted shadow-lg shadow-black/40 transition-colors hover:text-text-secondary"
       >
-        Powered by <span className="font-semibold text-text-primary">Orvelle</span>
+        Powered by <Logo size="sm" className="text-text-primary" />
       </a>
 
       {/* name capture (first comment only) */}

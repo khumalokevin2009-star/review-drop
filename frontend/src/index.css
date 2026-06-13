@@ -2,24 +2,31 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Orvelle design system — CLAUDE.md Section 10 */
+/* Orvelle design system — dark premium skin (shared with the landing). */
 @layer base {
   :root {
+    color-scheme: dark;
     --brand-primary: #6366f1;
     --brand-primary-hover: #4f46e5;
-    --background: #fafafa;
-    --surface: #ffffff;
-    --surface-elevated: #f4f4f5;
-    --border: #e4e4e7;
-    --text-primary: #09090b;
-    --text-secondary: #71717a;
-    --text-muted: #a1a1aa;
+    --background: #08090a;
+    --surface: #0c0d0f;
+    --surface-elevated: #101113;
+    --border: rgba(255, 255, 255, 0.08);
+    --text-primary: #fafafa;
+    --text-secondary: #a1a1aa;
+    --text-muted: #8a8a93;
     --status-open: #ef4444;
     --status-in-progress: #f59e0b;
     --status-resolved: #22c55e;
     --pin-dot: #6366f1;
-    --destructive: #ef4444;
+    --destructive: #f87171;
     --success: #22c55e;
+  }
+
+  /* Hairline by default — any bare border-* utility uses the white/8% line
+     (matches the landing). Components still override with their own colour. */
+  * {
+    @apply border-border;
   }
 
   html {

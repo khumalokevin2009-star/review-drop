@@ -1,13 +1,16 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { isAxiosError } from "axios";
-import { MousePointerClick, Plus } from "lucide-react";
+import { motion, useReducedMotion } from "framer-motion";
+import { Plus } from "lucide-react";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
+import { Link } from "react-router-dom";
 import { toast } from "sonner";
 import { z } from "zod";
 
 import { ProjectCard } from "@/components/dashboard/ProjectCard";
 import { UserMenu } from "@/components/layout/UserMenu";
+import { Logo } from "@/components/shared/Logo";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import {
@@ -170,20 +173,21 @@ interface EmptyStateProps {
 
 function EmptyState({ onCreate }: EmptyStateProps) {
   return (
-    <div className="col-span-full flex flex-col items-center justify-center gap-4 rounded-lg border border-dashed border-border bg-surface px-6 py-20 text-center">
-      <div className="flex h-12 w-12 items-center justify-center rounded-full bg-brand/10">
-        <MousePointerClick className="h-6 w-6 text-brand" />
-      </div>
-      <div>
-        <h2 className="text-base font-medium text-text-primary">
-          Create your first review
-        </h2>
-        <p className="mt-1 max-w-sm text-sm text-text-secondary">
-          Add a staging site, share the link, and your client can click
-          anywhere to leave feedback — no account needed.
-        </p>
-      </div>
-      <Button onClick={onCreate}>
+    <div className="col-span-full flex flex-col items-start gap-5 rounded-xl border border-border px-8 py-16 sm:px-12 sm:py-20">
+      <span className="font-mono text-xs uppercase tracking-[0.2em] text-text-muted">
+        No projects yet
+      </span>
+      <h2 className="max-w-xl text-[clamp(1.75rem,3vw,2.5rem)] font-medium leading-[1.1] tracking-tight text-text-primary">
+        Create your first review
+        <span aria-hidden="true" className="text-brand">
+          .
+        </span>
+      </h2>
+      <p className="max-w-md text-sm leading-relaxed text-text-secondary">
+        Add a staging site, share the link, and your client can click anywhere
+        to leave feedback — no account needed.
+      </p>
+      <Button onClick={onCreate} className="mt-2">
         <Plus className="h-4 w-4" />
         New review
       </Button>
@@ -196,34 +200,36 @@ function EmptyState({ onCreate }: EmptyStateProps) {
 export default function Dashboard() {
   const projectsQuery = useProjects();
   const [createOpen, setCreateOpen] = useState(false);
+  const reduced = useReducedMotion();
 
   const projects = projectsQuery.data ?? [];
 
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
-      <header className="border-b border-border bg-surface">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3 sm:px-6">
-          <div className="flex items-center gap-2">
-            <span className="flex h-7 w-7 items-center justify-center rounded-full bg-brand text-xs font-bold text-white">
-              O
-            </span>
-            <span className="font-semibold text-text-primary">Orvelle</span>
-          </div>
+      <header className="sticky top-0 z-30 border-b border-border bg-background/80 backdrop-blur-md">
+        <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-3 sm:px-8">
+          <Link
+            to="/dashboard"
+            aria-label="Orvelle dashboard"
+            className="rounded-sm text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+          >
+            <Logo size="md" />
+          </Link>
           <UserMenu />
         </div>
       </header>
 
       {/* Content */}
-      <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
-        <div className="mb-6 flex items-center justify-between">
+      <main className="mx-auto max-w-6xl px-6 py-10 sm:px-8">
+        <div className="mb-8 flex items-end justify-between">
           <div>
-            <h1 className="text-2xl font-semibold tracking-tight text-text-primary">
+            <span className="font-mono text-xs uppercase tracking-[0.2em] text-text-muted">
+              Workspace
+            </span>
+            <h1 className="mt-2 text-2xl font-medium tracking-tight text-text-primary">
               Projects
             </h1>
-            <p className="text-sm text-text-secondary">
-              Your client review sites
-            </p>
           </div>
           <Button onClick={() => setCreateOpen(true)}>
             <Plus className="h-4 w-4" />
@@ -232,7 +238,7 @@ export default function Dashboard() {
         </div>
 
         {projectsQuery.isError ? (
-          <div className="rounded-lg border border-border bg-surface px-6 py-12 text-center">
+          <div className="rounded-xl border border-border px-6 py-12 text-center">
             <p className="text-sm text-text-secondary">
               Couldn&apos;t load your projects.
             </p>
@@ -255,8 +261,19 @@ export default function Dashboard() {
             ) : projects.length === 0 ? (
               <EmptyState onCreate={() => setCreateOpen(true)} />
             ) : (
-              projects.map((project) => (
-                <ProjectCard key={project.id} project={project} />
+              projects.map((project, i) => (
+                <motion.div
+                  key={project.id}
+                  initial={reduced ? false : { opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{
+                    duration: 0.3,
+                    ease: [0.16, 1, 0.3, 1],
+                    delay: reduced ? 0 : Math.min(i * 0.04, 0.24),
+                  }}
+                >
+                  <ProjectCard project={project} />
+                </motion.div>
               ))
             )}
           </div>

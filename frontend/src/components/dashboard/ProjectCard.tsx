@@ -1,7 +1,6 @@
 import {
   Archive,
   ArchiveRestore,
-  Globe,
   Link as LinkIcon,
   MoreVertical,
   Trash2,
@@ -90,7 +89,7 @@ export function ProjectCard({ project }: ProjectCardProps) {
 
   return (
     <>
-      <Card className="group overflow-hidden transition-shadow hover:shadow-md">
+      <Card className="group overflow-hidden transition-[transform,border-color] duration-200 hover:-translate-y-0.5 hover:border-white/20 motion-reduce:hover:translate-y-0">
         {/* Thumbnail (click navigates to the project detail page) */}
         <Link
           to={`/projects/${project.id}`}
@@ -105,17 +104,25 @@ export function ProjectCard({ project }: ProjectCardProps) {
               loading="lazy"
             />
           ) : (
-            <div className="flex h-full w-full items-center justify-center">
-              <Globe className="h-8 w-8 text-text-muted" />
+            // Dark gradient block with the indigo dot motif (the brand mark).
+            <div
+              className="flex h-full w-full items-center justify-center bg-gradient-to-br from-[#101113] to-[#0A0B0D]"
+              style={{
+                backgroundImage:
+                  "radial-gradient(circle, rgba(255,255,255,0.05) 1px, transparent 1px)",
+                backgroundSize: "16px 16px",
+              }}
+            >
+              <span className="h-2.5 w-2.5 rounded-full bg-brand shadow-[0_0_24px_4px_rgba(99,102,241,0.45)]" />
             </div>
           )}
           {openCount > 0 ? (
-            <span className="absolute right-2 top-2 inline-flex min-w-[1.5rem] items-center justify-center rounded-full bg-status-open px-1.5 py-0.5 text-xs font-semibold text-white">
+            <span className="absolute right-2 top-2 inline-flex min-w-[1.5rem] items-center justify-center rounded-full bg-[#DC2626] px-1.5 py-0.5 text-xs font-semibold text-white">
               {openCount}
             </span>
           ) : null}
           {isArchived ? (
-            <span className="absolute left-2 top-2 rounded-full bg-text-secondary px-2 py-0.5 text-xs font-medium text-white">
+            <span className="absolute left-2 top-2 rounded-full bg-surface-elevated px-2 py-0.5 font-mono text-[10px] uppercase tracking-[0.12em] text-text-secondary">
               archived
             </span>
           ) : null}
@@ -132,8 +139,8 @@ export function ProjectCard({ project }: ProjectCardProps) {
                 {project.client_name}
               </p>
             ) : null}
-            <p className="mt-1 text-xs text-text-muted">
-              Last activity {formatRelative(lastActivity)}
+            <p className="mt-2 font-mono text-[10px] uppercase tracking-[0.12em] text-text-muted">
+              {formatRelative(lastActivity)}
             </p>
           </Link>
 

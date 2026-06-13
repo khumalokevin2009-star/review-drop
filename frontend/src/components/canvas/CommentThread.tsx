@@ -106,9 +106,9 @@ function StatusSegmentedControl({ status, onChange }: StatusSegmentedControlProp
             aria-checked={active}
             onClick={() => onChange(segment.value)}
             className={cn(
-              "flex flex-1 items-center justify-center gap-1.5 rounded-md px-2 py-1.5 text-[11px] font-medium lowercase transition-colors duration-150",
+              "flex flex-1 items-center justify-center gap-1.5 rounded-md px-2 py-1.5 text-[11px] font-medium lowercase transition-colors duration-150 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-brand/70",
               active
-                ? cn("bg-surface shadow-sm", segment.activeText)
+                ? cn("bg-white/[0.08]", segment.activeText)
                 : "text-text-muted hover:text-text-secondary",
             )}
           >
@@ -159,7 +159,7 @@ export function CommentThread({
       initial={reduceMotion ? { opacity: 0 } : { opacity: 0, x: 12 }}
       animate={{ opacity: 1, x: 0 }}
       transition={{ duration: 0.15, ease: [0.16, 1, 0.3, 1] }}
-      className="absolute bottom-4 right-4 top-4 z-20 flex w-80 flex-col overflow-hidden rounded-xl border border-border bg-surface shadow-xl ring-1 ring-black/5"
+      className="absolute bottom-4 right-4 top-4 z-20 flex w-80 flex-col overflow-hidden rounded-xl border border-border bg-surface shadow-2xl shadow-black/50"
     >
       {/* header */}
       <div className="flex items-center justify-between border-b border-border px-4 py-3">

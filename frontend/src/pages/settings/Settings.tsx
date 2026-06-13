@@ -270,12 +270,15 @@ function PlanBadge({ plan }: { plan: Plan }) {
   return (
     <span
       className={cn(
-        "inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium lowercase",
+        "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 font-mono text-[10px] uppercase tracking-[0.12em]",
         plan === "free"
-          ? "bg-surface-elevated text-text-secondary"
-          : "bg-brand/10 text-brand",
+          ? "border-border text-text-secondary"
+          : "border-brand/40 text-[#818CF8]",
       )}
     >
+      {plan !== "free" ? (
+        <span className="h-1.5 w-1.5 rounded-full bg-brand" />
+      ) : null}
       {plan}
     </span>
   );

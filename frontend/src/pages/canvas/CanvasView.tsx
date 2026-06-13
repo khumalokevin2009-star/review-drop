@@ -230,7 +230,7 @@ export default function CanvasView() {
               type="button"
               onClick={() => setMode("browse")}
               className={cn(
-                "rounded px-2.5 py-1 text-xs font-medium",
+                "rounded px-2.5 py-1 text-xs font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand",
                 mode === "browse"
                   ? "bg-brand text-white"
                   : "text-text-secondary hover:text-text-primary",
@@ -242,7 +242,7 @@ export default function CanvasView() {
               type="button"
               onClick={() => setMode("comment")}
               className={cn(
-                "rounded px-2.5 py-1 text-xs font-medium",
+                "rounded px-2.5 py-1 text-xs font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand",
                 mode === "comment"
                   ? "bg-brand text-white"
                   : "text-text-secondary hover:text-text-primary",
@@ -267,7 +267,7 @@ export default function CanvasView() {
             </div>
           ) : proxyQuery.isError ? (
             <div className="flex h-full items-center justify-center p-6">
-              <div className="max-w-sm rounded-lg border border-border bg-surface p-6 text-center shadow-sm">
+              <div className="max-w-sm rounded-xl border border-border bg-surface p-6 text-center">
                 <p className="text-sm font-medium text-text-primary">
                   This page couldn’t be loaded
                 </p>
@@ -347,6 +347,11 @@ export default function CanvasView() {
 
         {/* sidebar */}
         <aside className="flex w-72 shrink-0 flex-col border-l border-border bg-surface">
+          <div className="border-b border-border px-3 pb-2 pt-3">
+            <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-text-muted">
+              Comments
+            </span>
+          </div>
           <div className="flex flex-wrap items-center gap-1 border-b border-border px-3 py-2">
             {STATUS_FILTERS.map((f) => (
               <button
@@ -354,7 +359,7 @@ export default function CanvasView() {
                 type="button"
                 onClick={() => setStatusFilter(f.value)}
                 className={cn(
-                  "rounded-full px-2.5 py-0.5 text-xs font-medium",
+                  "rounded-full px-2.5 py-0.5 text-xs font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand",
                   statusFilter === f.value
                     ? "bg-brand text-white"
                     : "text-text-secondary hover:bg-surface-elevated",
@@ -391,7 +396,7 @@ export default function CanvasView() {
                       type="button"
                       onClick={() => setFocusedId(comment.id)}
                       className={cn(
-                        "flex w-full gap-2 px-3 py-3 text-left hover:bg-surface-elevated",
+                        "flex w-full gap-2 px-3 py-3 text-left hover:bg-surface-elevated focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand",
                         focusedId === comment.id && "bg-surface-elevated",
                       )}
                     >
