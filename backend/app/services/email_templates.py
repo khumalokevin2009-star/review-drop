@@ -4,6 +4,13 @@ Kept dependency-free and email-client-safe: light theme (best for deliverability
 and client inboxes), table-based layout, inline styles, all user-supplied content
 HTML-escaped. Each renderer returns ``(html, text)``; the subject line is the
 caller's concern.
+
+Tone is deliberately plain and transactional — a personal "someone left a
+comment" note, not a designed marketing email: restrained copy, a single text
+link instead of a big filled CTA, and a plain footer with no marketing
+strapline. This reads correctly for the recipient and also nudges Gmail away
+from filing it under the Promotions tab. Note that inbox placement also improves
+naturally over time as the sending domain (orvellehq.com) builds reputation.
 """
 
 from __future__ import annotations
@@ -85,18 +92,16 @@ def render_new_comment_email(
 </td></tr>
 </table>
 </td></tr>
-<tr><td style="padding:24px 32px 0 32px;">
-<table role="presentation" cellpadding="0" cellspacing="0"><tr>
-<td style="border-radius:8px;background:{_INDIGO};">
-<a href="{url}" style="display:inline-block;padding:11px 22px;font-size:14px;font-weight:600;color:#ffffff;text-decoration:none;border-radius:8px;">View feedback &rarr;</a>
-</td>
-</tr></table>
+<tr><td style="padding:20px 32px 0 32px;">
+<p style="margin:0;font-size:14px;line-height:1.5;color:#0f172a;">
+<a href="{url}" style="color:{_INDIGO};font-weight:500;text-decoration:underline;">View feedback &rarr;</a>
+</p>
 </td></tr>
 <tr><td style="padding:20px 32px 28px 32px;">
 <p style="margin:0;font-size:12px;line-height:1.6;color:#94a3b8;">{meta_html}{' ' if meta_html else ''}You're receiving this because you own {project} on Orvelle.</p>
 </td></tr>
 </table>
-<p style="margin:16px 0 0 0;font-size:11px;color:#b0b7c0;font-family:{_FONT};">Orvelle &middot; Client feedback on your website drafts</p>
+<p style="margin:16px 0 0 0;font-size:11px;color:#b0b7c0;font-family:{_FONT};">Orvelle</p>
 </td></tr>
 </table>
 </body>
@@ -107,10 +112,10 @@ def render_new_comment_email(
         f"{commenter_name} left a comment on {review_name or project_name}:\n\n"
         f'  "{preview}"\n\n'
         f"{meta_text}"
-        f"View the feedback: {url}\n\n"
+        f"View feedback: {url}\n\n"
         f"—\n"
-        f"Orvelle · Client feedback on your website drafts\n"
-        f"You're receiving this because you own {project_name}.\n"
+        f"Orvelle\n"
+        f"You're receiving this because you own {project_name} on Orvelle.\n"
     )
 
     return html, text

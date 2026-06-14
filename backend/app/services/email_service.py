@@ -47,6 +47,9 @@ async def send_email(
         return EmailResult(ok=False, detail="email not configured")
 
     payload: dict[str, object] = {
+        # EMAIL_FROM may be a full "Display Name <addr@domain>" string (e.g.
+        # "Orvelle <hello@orvellehq.com>"); Resend accepts that verbatim and
+        # renders the display name in the inbox, so pass it through unchanged.
         "from": settings.EMAIL_FROM,
         "to": [to],
         "subject": subject,
