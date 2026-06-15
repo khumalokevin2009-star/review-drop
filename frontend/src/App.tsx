@@ -19,6 +19,8 @@ const CanvasView = lazy(() => import("@/pages/canvas/CanvasView"));
 const ProjectView = lazy(() => import("@/pages/project/ProjectView"));
 const ReviewPage = lazy(() => import("@/pages/review/ReviewPage"));
 const Settings = lazy(() => import("@/pages/settings/Settings"));
+const BillingSuccess = lazy(() => import("@/pages/billing/BillingSuccess"));
+const BillingCancel = lazy(() => import("@/pages/billing/BillingCancel"));
 
 export default function App() {
   return (
@@ -88,6 +90,23 @@ export default function App() {
           element={
             <Suspense fallback={<LoadingSpinner />}>
               <Settings />
+            </Suspense>
+          }
+        />
+        {/* Stripe Checkout redirect landing pages (CLAUDE.md §12). */}
+        <Route
+          path="/billing/success"
+          element={
+            <Suspense fallback={<LoadingSpinner />}>
+              <BillingSuccess />
+            </Suspense>
+          }
+        />
+        <Route
+          path="/billing/cancel"
+          element={
+            <Suspense fallback={<LoadingSpinner />}>
+              <BillingCancel />
             </Suspense>
           }
         />

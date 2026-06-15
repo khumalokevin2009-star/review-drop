@@ -5,6 +5,7 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { isAxiosError } from "axios";
+import { format } from "date-fns";
 import { ArrowLeft, Check, Minus } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { Link } from "react-router-dom";
@@ -22,13 +23,8 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
 import { useAuth } from "@/hooks/useAuth";
+import { useBilling } from "@/hooks/useBilling";
 import { cn } from "@/lib/utils";
 import type { ApiError, Plan, User } from "@/types";
 
@@ -284,8 +280,31 @@ function PlanBadge({ plan }: { plan: Plan }) {
   );
 }
 
+/** Human billing status line driven by the Stripe-synced fields (CLAUDE.md §12).
+ * Note: a `past_due` subscription is paired with plan='free' by the backend, so
+ * it's handled by the Free early-return below (no separate Pro case needed). */
+function planStatusLine(user: User): string {
+  if (user.plan === "free") return "You're on the Free plan";
+  const end = user.current_period_end
+    ? format(new Date(user.current_period_end), "d MMM yyyy")
+    : null;
+  switch (user.subscription_status) {
+    case "trialing":
+      return end ? `Pro — free trial ends ${end}` : "Pro — free trial active";
+    case "canceled":
+      return end ? `Pro — access ends ${end}` : "Pro — cancelling";
+    case "active":
+      return end ? `Pro — renews ${end}` : "Pro — active";
+    default:
+      return "Pro plan";
+  }
+}
+
 function PlanCard({ user }: { user: User }) {
+  const { startCheckout, openPortal } = useBilling();
   const limits = PLAN_LIMITS[user.plan] ?? PLAN_LIMITS.free;
+  const isPaid = user.plan !== "free";
+
   return (
     <Card>
       <CardHeader>
@@ -293,7 +312,7 @@ function PlanCard({ user }: { user: User }) {
           <div>
             <CardTitle>Plan</CardTitle>
             <CardDescription className="mt-1.5">
-              What&apos;s included on your current plan
+              {planStatusLine(user)}
             </CardDescription>
           </div>
           <PlanBadge plan={user.plan} />
@@ -316,18 +335,28 @@ function PlanCard({ user }: { user: User }) {
           ))}
         </ul>
 
-        <div className="mt-5 flex justify-end">
-          <TooltipProvider delayDuration={150}>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                {/* span wrapper: disabled buttons don't fire hover events */}
-                <span tabIndex={0}>
-                  <Button disabled>Upgrade</Button>
-                </span>
-              </TooltipTrigger>
-              <TooltipContent>Billing coming soon</TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
+        <div className="mt-5 flex items-center justify-between gap-3">
+          <p className="text-xs text-text-muted">
+            {isPaid
+              ? "Update your card, view invoices or cancel — handled securely by Stripe."
+              : "Start a 30-day free trial. No charge until it ends; cancel any time."}
+          </p>
+          {isPaid ? (
+            <Button
+              variant="outline"
+              onClick={() => openPortal.mutate()}
+              disabled={openPortal.isPending}
+            >
+              {openPortal.isPending ? "Opening…" : "Manage billing"}
+            </Button>
+          ) : (
+            <Button
+              onClick={() => startCheckout.mutate()}
+              disabled={startCheckout.isPending}
+            >
+              {startCheckout.isPending ? "Redirecting…" : "Upgrade to Pro"}
+            </Button>
+          )}
         </div>
       </CardContent>
     </Card>

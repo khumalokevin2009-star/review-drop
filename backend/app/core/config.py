@@ -43,13 +43,21 @@ class Settings(BaseSettings):
     R2_BUCKET_NAME: str = "orvelle-screenshots"
     R2_PUBLIC_URL: str | None = None
 
-    # Stripe (optional until billing is wired up)
+    # Stripe (TEST MODE — billing). Keys come from backend/.env; never hardcode.
+    # When STRIPE_SECRET_KEY is unset the billing endpoints return a clean 503 so
+    # local dev without keys doesn't crash (see routes/billing.py).
     STRIPE_SECRET_KEY: str | None = None
+    STRIPE_PUBLISHABLE_KEY: str | None = None
     STRIPE_WEBHOOK_SECRET: str | None = None
     STRIPE_PRO_MONTHLY_PRICE_ID: str | None = None
+    # Launching with Free + Pro only — the annual/Studio price slots stay
+    # nullable and unused for now (Studio = "Coming soon" in the UI).
     STRIPE_PRO_ANNUAL_PRICE_ID: str | None = None
     STRIPE_STUDIO_MONTHLY_PRICE_ID: str | None = None
     STRIPE_STUDIO_ANNUAL_PRICE_ID: str | None = None
+    # Days of free trial granted on the Pro Checkout (card collected upfront,
+    # charged after the trial unless cancelled).
+    STRIPE_TRIAL_PERIOD_DAYS: int = 30
 
     # Resend (transactional email — CLAUDE.md Section 11)
     RESEND_API_KEY: str | None = None

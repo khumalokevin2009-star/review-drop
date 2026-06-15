@@ -24,7 +24,7 @@ import type {
   UserUpdatePayload,
 } from "@/types";
 
-const ME_QUERY_KEY = ["auth", "me"] as const;
+export const ME_QUERY_KEY = ["auth", "me"] as const;
 
 async function fetchMe(): Promise<User> {
   // After a hard reload the in-memory access token is gone; restore it

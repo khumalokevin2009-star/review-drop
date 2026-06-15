@@ -628,8 +628,8 @@ function PricingTeaser() {
           text="Flat pricing. No per-seat nonsense."
           className="mt-4 max-w-xl text-3xl font-medium tracking-tight text-white md:text-4xl"
         />
-        <RevealGroup className="mt-14 grid gap-6 pl-px pt-px md:grid-cols-3 md:gap-0">
-          {plans.map(({ name, price, period, tagline, popular }) => (
+        <RevealGroup className="mt-14 grid gap-6 pl-px pt-px md:grid-cols-2 md:gap-0 lg:grid-cols-4">
+          {plans.map(({ name, price, period, tagline, popular, comingSoon }) => (
             <RevealItem
               key={name}
               className={cn(
@@ -639,15 +639,21 @@ function PricingTeaser() {
                   : cn(HAIRLINE, "transition-colors duration-200 hover:border-white/20"),
               )}
             >
-              <div className="flex items-baseline justify-between">
+              <div className="flex items-baseline justify-between gap-2">
                 <h3 className="text-sm font-medium text-white">{name}</h3>
-                {popular ? <MonoLabel>Most popular</MonoLabel> : null}
+                {popular ? (
+                  <MonoLabel>Most popular</MonoLabel>
+                ) : comingSoon ? (
+                  <MonoLabel className="text-[#52525B]">Coming soon</MonoLabel>
+                ) : null}
               </div>
               <div className="flex items-baseline gap-1.5">
                 <span className="text-4xl font-medium tracking-tight text-white">
                   {price}
                 </span>
-                <span className="font-mono text-xs text-[#8A8A93]">{period}</span>
+                {period ? (
+                  <span className="font-mono text-xs text-[#8A8A93]">{period}</span>
+                ) : null}
               </div>
               <p className="text-sm leading-relaxed text-[#A1A1AA]">{tagline}</p>
             </RevealItem>

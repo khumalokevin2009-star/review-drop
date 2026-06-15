@@ -4,14 +4,31 @@
 
 export type Plan = "free" | "pro" | "studio";
 
+/** Raw Stripe subscription status mirrored from the backend (CLAUDE.md §12). */
+export type SubscriptionStatus =
+  | "trialing"
+  | "active"
+  | "past_due"
+  | "canceled"
+  | null;
+
 export interface User {
   id: string;
   email: string;
   full_name: string | null;
   plan: Plan;
+  /** Billing state — `plan` is the access projection of this. */
+  subscription_status: SubscriptionStatus;
+  /** ISO timestamp; a cancelled sub keeps Pro until this moment. */
+  current_period_end: string | null;
   is_active: boolean;
   created_at: string;
   updated_at: string;
+}
+
+/** POST /billing/checkout and /billing/portal both return a redirect URL. */
+export interface BillingSessionUrl {
+  url: string;
 }
 
 export interface AuthTokens {

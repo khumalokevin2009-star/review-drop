@@ -14,7 +14,15 @@ from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 
 from app.api.deps import limiter
-from app.api.routes import auth, comments, projects, proxy, reviews, screenshots
+from app.api.routes import (
+    auth,
+    billing,
+    comments,
+    projects,
+    proxy,
+    reviews,
+    screenshots,
+)
 from app.core.config import settings
 from app.services.storage_service import LocalStorage, get_storage
 
@@ -44,6 +52,10 @@ app.include_router(projects.router, prefix="/api/v1")
 app.include_router(reviews.router, prefix="/api/v1")
 app.include_router(comments.router, prefix="/api/v1")
 app.include_router(screenshots.router, prefix="/api/v1")
+# Billing — /checkout and /portal are JWT-auth'd; /webhook is signature-verified
+# (no JWT) since Stripe is the caller. CORS doesn't apply to Stripe's
+# server-to-server webhook call.
+app.include_router(billing.router, prefix="/api/v1")
 
 # Local-dev storage fallback: when R2 isn't configured, screenshots live in
 # ./storage and are served here so the feature works without an R2 account.

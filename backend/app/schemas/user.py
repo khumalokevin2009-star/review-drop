@@ -26,6 +26,10 @@ class UserRead(UserBase):
 
     id: uuid.UUID
     plan: str
+    # Billing state (CLAUDE.md Section 12). Surfaced so the UI can show
+    # "Pro — trial ends 14 Jul" etc. Never exposes Stripe secret identifiers.
+    subscription_status: str | None = None
+    current_period_end: datetime | None = None
     is_active: bool
     created_at: datetime
 

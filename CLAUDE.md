@@ -405,7 +405,7 @@ GET    /projects/{id}/export?format=csv   → CSV file
 ## 9. KEY BUSINESS LOGIC RULES
 
 ### Plan limits (enforced in backend, not just frontend)
-| Feature | Free | Pro (~£15/mo) | Studio (~£39/mo) |
+| Feature | Free | Pro (£19.99/mo) | Studio (~£39/mo, coming soon) |
 |---|---|---|---|
 | Active projects | 2 | Unlimited | Unlimited |
 | Reviews per project | 1 | Unlimited | Unlimited |
@@ -518,10 +518,10 @@ All emails: plain HTML, minimal design, text-heavy, no heavy images. Use Resend'
 ## 12. STRIPE BILLING SETUP
 
 ### Products to create in Stripe Dashboard:
-- **Pro Monthly** — £15/mo (`price_pro_monthly`)
-- **Pro Annual** — £144/yr (`price_pro_annual`) — saves ~20% vs monthly
-- **Studio Monthly** — £39/mo (`price_studio_monthly`)
-- **Studio Annual** — £374/yr (`price_studio_annual`)
+- **Pro Monthly** — £19.99/mo (`price_pro_monthly`) — LAUNCH price; 30-day free trial
+- **Pro Annual** — £144/yr (`price_pro_annual`) — not used at launch (Free + Pro only)
+- **Studio Monthly** — £39/mo (`price_studio_monthly`) — "Coming soon", not yet purchasable
+- **Studio Annual** — £374/yr (`price_studio_annual`) — not used at launch
 
 ### Webhook events to handle:
 ```

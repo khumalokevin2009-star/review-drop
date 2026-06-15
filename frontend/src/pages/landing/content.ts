@@ -1,11 +1,40 @@
 /**
  * Marketing copy and plan data shared between the landing page and the
- * /pricing and /faq pages. Plan limits mirror CLAUDE.md Section 9 exactly —
- * if the plans change there, change them here.
+ * /pricing and /faq pages. Plan LIMITS mirror CLAUDE.md Section 9; the launch
+ * PRICING is Free + Pro only — Pro is £19.99/mo with a 30-day free trial
+ * (Studio is teased "Coming soon", Enterprise routes to contact). If the plans
+ * or price change, update CLAUDE.md Sections 9 & 12 to match.
  */
 
-export const plans = [
+/** A pricing tier. `kind` drives CTA behaviour (see PricingPage). */
+export type PlanKind = "free" | "pro" | "studio" | "enterprise";
+
+export interface PricingTier {
+  kind: PlanKind;
+  name: string;
+  price: string;
+  period: string;
+  tagline: string;
+  features: readonly string[];
+  /** CTA label for logged-out / generic visitors. */
+  cta: string;
+  popular: boolean;
+  /** Small print under the price (e.g. the trial terms). */
+  note?: string;
+  /** Studio — not yet purchasable. */
+  comingSoon?: boolean;
+  /** Enterprise — bespoke, contact instead of Stripe. */
+  contactEmail?: string;
+}
+
+/**
+ * Launch line-up: Free + Pro are live; Studio is teased ("Coming soon"),
+ * Enterprise routes to a contact email. Pro is £19.99/mo with a 30-day free
+ * trial (card collected upfront via Stripe Checkout).
+ */
+export const plans: readonly PricingTier[] = [
   {
+    kind: "free",
     name: "Free",
     price: "£0",
     period: "forever",
@@ -20,8 +49,9 @@ export const plans = [
     popular: false,
   },
   {
+    kind: "pro",
     name: "Pro",
-    price: "£15",
+    price: "£19.99",
     period: "/month",
     tagline: "For freelancers reviewing weekly.",
     features: [
@@ -30,10 +60,12 @@ export const plans = [
       "PDF & CSV export",
       "No watermark",
     ],
-    cta: "Start with Pro",
+    cta: "Start 30-day free trial",
     popular: true,
+    note: "30-day free trial, then £19.99/mo. Cancel any time.",
   },
   {
+    kind: "studio",
     name: "Studio",
     price: "£39",
     period: "/month",
@@ -41,13 +73,30 @@ export const plans = [
     features: [
       "Everything in Pro",
       "3 team members",
-      "Unlimited projects & reviews",
-      "PDF & CSV export",
+      "Shared projects & reviews",
+      "Priority support",
     ],
-    cta: "Start with Studio",
+    cta: "Coming soon",
     popular: false,
+    comingSoon: true,
   },
-] as const;
+  {
+    kind: "enterprise",
+    name: "Enterprise",
+    price: "Let's talk",
+    period: "",
+    tagline: "For agencies with bespoke needs.",
+    features: [
+      "Everything in Studio",
+      "Custom seats & volume",
+      "SSO & security review",
+      "A real human on email",
+    ],
+    cta: "Contact us",
+    popular: false,
+    contactEmail: "hello@orvellehq.com",
+  },
+];
 
 /** Plan-comparison rows for /pricing (CLAUDE.md Section 9 limits, verbatim). */
 export const planMatrix = [
@@ -61,7 +110,7 @@ export const planMatrix = [
 
 export const comparison = [
   { point: "Client access", them: "Accounts, invites and seats", us: "One link — no login" },
-  { point: "Pricing", them: "Per-seat, and it keeps climbing", us: "Flat: £0, £15 or £39" },
+  { point: "Pricing", them: "Per-seat, and it keeps climbing", us: "Flat: £0 or £19.99 — no per-seat" },
   { point: "Free tier", them: "A trial that expires", us: "Free forever, no card" },
   { point: "Comments", them: "Page-level notes", us: "Pinned to the exact pixel" },
   { point: "Handoff", them: "Copy-paste into email", us: "PDF & CSV export" },

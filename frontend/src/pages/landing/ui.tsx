@@ -105,6 +105,7 @@ export function MonoLabel({
 // ---------------------------------------------------------------------------
 
 export const MotionLink = motion(Link);
+export const MotionButton = motion.button;
 
 export const pressProps = {
   whileTap: { scale: 0.97 },
@@ -120,6 +121,11 @@ export const pillWhite = cn(
 export const pillGhost = cn(
   "inline-flex h-11 touch-manipulation items-center justify-center rounded-full border border-white/[0.15] px-6 text-sm font-medium text-white transition-colors duration-150 hover:border-white/30 hover:bg-white/[0.04] active:bg-white/[0.08]",
   focusRing,
+);
+
+/** Inert pill for a "Coming soon" tier — reads as a non-CTA, no hover/press. */
+export const pillDisabled = cn(
+  "inline-flex h-11 cursor-not-allowed select-none items-center justify-center rounded-full border border-white/[0.08] px-6 text-sm font-medium text-[#52525B]",
 );
 
 // ---------------------------------------------------------------------------
