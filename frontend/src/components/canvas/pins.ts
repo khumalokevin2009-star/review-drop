@@ -30,13 +30,20 @@ export function numberCommentsForPage(
   pageUrl: string,
 ): NumberedComment[] {
   const target = normalizePageUrl(pageUrl);
-  return comments
-    .filter(
-      (c) => c.parent_id === null && normalizePageUrl(c.page_url) === target,
-    )
-    .slice()
-    .sort((a, b) => a.created_at.localeCompare(b.created_at))
-    .map((comment, index) => ({ comment, number: index + 1 }));
+  return (
+    comments
+      .filter(
+        (c) => c.parent_id === null && normalizePageUrl(c.page_url) === target,
+      )
+      .slice()
+      // id is a deterministic tiebreak for same-timestamp pins so the canvas and
+      // the backend export (same secondary key) number them identically.
+      .sort(
+        (a, b) =>
+          a.created_at.localeCompare(b.created_at) || a.id.localeCompare(b.id),
+      )
+      .map((comment, index) => ({ comment, number: index + 1 }))
+  );
 }
 
 /** Pins to render — hides resolved unless asked, preserving numbers. */

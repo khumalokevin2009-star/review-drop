@@ -394,11 +394,18 @@ POST   /billing/portal         → {portal_url}
 POST   /billing/webhook        body: Stripe event (raw body, signature verified)
 ```
 
-### Export
+### Export (Pro only — see Section 9)
 ```
-GET    /projects/{id}/export?format=pdf   → PDF file
-GET    /projects/{id}/export?format=csv   → CSV file
+GET    /reviews/{id}/export?format=csv     → CSV file (download)
+GET    /reviews/{id}/export?format=pdf     → PDF file (download)
 ```
+> **Scope is the REVIEW, not the project.** Comments are keyed by `review_id` and
+> the canvas comment list is per-review, so export is scoped to a single review
+> (this supersedes the earlier `/projects/{id}/export` sketch). Owner-scoped
+> through the parent project (cross-user → 404); Pro-gated (Free → 403 "Export is
+> a Pro feature"). Exports the top-level pins shown in the canvas sidebar,
+> numbered per page; returned as `attachment` with a `orvelle-{name}-feedback.{ext}`
+> filename. A project-level rollup export, if ever needed, would be added separately.
 
 ---
 
@@ -676,7 +683,7 @@ When assigning tasks to Claude Code or Cowork agents, use these scoped task desc
 | **Agent: Canvas UI** | ReviewCanvas, PinOverlay, CommentPin, CommentThread | `frontend/src/pages/canvas/*`, `frontend/src/components/canvas/*` | Sections 10 (canvas component specs), 9 (comment mode rules) |
 | **Agent: Guest Canvas** | Public review page (no auth), GuestCanvas, name capture | `frontend/src/pages/review/*` | Sections 9 (guest sessions), 10 (GuestCanvas spec) |
 | **Agent: Landing Page** | Marketing landing page + pricing page | `frontend/src/pages/landing/*` | Section 10 (design system), Section 3 (value props) |
-| **Agent: Export** | PDF + CSV export endpoints | `backend/app/api/routes/export.py` | Section 7 (comment schema), Section 9 (plan limits) |
+| **Agent: Export** | PDF + CSV export of a **review's** comments (Pro-gated) | `backend/app/api/routes/export.py`, `backend/app/services/export_service.py`, `backend/app/schemas/export.py`, `frontend/src/hooks/useExport.ts`, `frontend/src/components/canvas/ExportMenu.tsx` | Sections 7 (comment schema), 9 (plan limits — export is Pro), 8 (review-level endpoint) |
 
 ### How to brief each agent
 Start every Claude Code session with:

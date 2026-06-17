@@ -18,6 +18,7 @@ from app.api.routes import (
     auth,
     billing,
     comments,
+    export,
     projects,
     proxy,
     reviews,
@@ -51,6 +52,7 @@ app.include_router(proxy.router, prefix="/api/v1")
 app.include_router(projects.router, prefix="/api/v1")
 app.include_router(reviews.router, prefix="/api/v1")
 app.include_router(comments.router, prefix="/api/v1")
+app.include_router(export.router, prefix="/api/v1")
 app.include_router(screenshots.router, prefix="/api/v1")
 # Billing — /checkout and /portal are JWT-auth'd; /webhook is signature-verified
 # (no JWT) since Stripe is the caller. CORS doesn't apply to Stripe's

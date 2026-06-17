@@ -67,6 +67,7 @@ def _same_bare_host(a: str, b: str) -> bool:
 
     return bare(a) != "" and bare(a) == bare(b)
 
+
 # Eager-load both possible authors so serialization never lazy-loads (which
 # would fail under async) and we can render the commenter's name.
 _AUTHOR_LOAD = (
@@ -263,7 +264,7 @@ async def list_project_comments(
     )
     if status_filter is not None:
         stmt = stmt.where(Comment.status == status_filter.value)
-    stmt = stmt.order_by(Comment.created_at.asc())
+    stmt = stmt.order_by(Comment.created_at.asc(), Comment.id.asc())
     result = await db.execute(stmt)
     return [_to_read(c) for c in result.scalars().all()]
 
@@ -283,7 +284,7 @@ async def list_review_comments(
     )
     if status_filter is not None:
         stmt = stmt.where(Comment.status == status_filter.value)
-    stmt = stmt.order_by(Comment.created_at.asc())
+    stmt = stmt.order_by(Comment.created_at.asc(), Comment.id.asc())
     result = await db.execute(stmt)
     return [_to_read(c) for c in result.scalars().all()]
 
@@ -474,7 +475,7 @@ async def list_guest_comments(
         select(Comment)
         .options(*_AUTHOR_LOAD)
         .where(Comment.review_id == review.id, Comment.deleted_at.is_(None))
-        .order_by(Comment.created_at.asc())
+        .order_by(Comment.created_at.asc(), Comment.id.asc())
     )
     return [
         _to_read(c, is_mine=(guest is not None and c.author_guest_id == guest.id))

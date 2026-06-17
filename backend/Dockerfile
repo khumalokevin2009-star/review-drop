@@ -8,9 +8,11 @@ ENV PYTHONUNBUFFERED=1 \
 
 WORKDIR /app
 
-# System deps needed by asyncpg/playwright build steps.
+# System deps needed by asyncpg/playwright build steps. fonts-dejavu-core gives
+# the PDF export a Unicode font (DejaVuSans) so non-Latin comments/names render
+# instead of falling back to Latin-1-only Helvetica (see export_service.py).
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends build-essential \
+    && apt-get install -y --no-install-recommends build-essential fonts-dejavu-core \
     && rm -rf /var/lib/apt/lists/*
 
 COPY requirements.txt .

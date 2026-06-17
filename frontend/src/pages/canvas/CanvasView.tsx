@@ -17,6 +17,7 @@ import { toast } from "sonner";
 
 import { CanvasFrame } from "@/components/canvas/CanvasFrame";
 import { CommentThread } from "@/components/canvas/CommentThread";
+import { ExportMenu } from "@/components/canvas/ExportMenu";
 import { NewCommentPopover } from "@/components/canvas/NewCommentPopover";
 import {
   numberCommentsForPage,
@@ -75,7 +76,9 @@ export default function CanvasView() {
   const [mode, setMode] = useState<CanvasMode>("browse");
   const [focusedId, setFocusedId] = useState<string | null>(null);
   const [showResolved, setShowResolved] = useState(false);
-  const [statusFilter, setStatusFilter] = useState<CommentStatus | "all">("all");
+  const [statusFilter, setStatusFilter] = useState<CommentStatus | "all">(
+    "all",
+  );
   const [unplacedCount, setUnplacedCount] = useState(0);
   const [pendingCoords, setPendingCoords] = useState<CanvasClickCoords | null>(
     null,
@@ -97,7 +100,10 @@ export default function CanvasView() {
   });
 
   const commentsQuery = useReviewComments(reviewId);
-  const comments = useMemo(() => commentsQuery.data ?? [], [commentsQuery.data]);
+  const comments = useMemo(
+    () => commentsQuery.data ?? [],
+    [commentsQuery.data],
+  );
 
   const updateStatus = useUpdateCommentStatus(reviewId);
   const reply = useReplyToComment(reviewId);
@@ -217,7 +223,10 @@ export default function CanvasView() {
             <p className="truncate text-sm font-semibold text-text-primary">
               {project.name}
               {review.name ? (
-                <span className="font-normal text-text-secondary"> · {review.name}</span>
+                <span className="font-normal text-text-secondary">
+                  {" "}
+                  · {review.name}
+                </span>
               ) : null}
             </p>
             <p className="truncate font-mono text-xs text-text-muted">{path}</p>
@@ -260,7 +269,10 @@ export default function CanvasView() {
 
       <div className="flex min-h-0 flex-1">
         {/* canvas */}
-        <main ref={canvasRef} className="relative min-w-0 flex-1 bg-surface-elevated">
+        <main
+          ref={canvasRef}
+          className="relative min-w-0 flex-1 bg-surface-elevated"
+        >
           {proxyQuery.isLoading ? (
             <div className="flex h-full items-center justify-center">
               <LoadingSpinner />
@@ -275,7 +287,11 @@ export default function CanvasView() {
                   The site may block embedding or be unreachable.
                 </p>
                 <Button asChild variant="outline" size="sm" className="mt-4">
-                  <a href={currentUrl ?? project.url} target="_blank" rel="noreferrer">
+                  <a
+                    href={currentUrl ?? project.url}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
                     Open site directly
                     <ExternalLink className="ml-1.5 h-3.5 w-3.5" />
                   </a>
@@ -347,10 +363,11 @@ export default function CanvasView() {
 
         {/* sidebar */}
         <aside className="flex w-72 shrink-0 flex-col border-l border-border bg-surface">
-          <div className="border-b border-border px-3 pb-2 pt-3">
+          <div className="flex items-center justify-between gap-2 border-b border-border px-3 pb-2 pt-3">
             <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-text-muted">
               Comments
             </span>
+            <ExportMenu reviewId={reviewId} />
           </div>
           <div className="flex flex-wrap items-center gap-1 border-b border-border px-3 py-2">
             {STATUS_FILTERS.map((f) => (
@@ -372,8 +389,8 @@ export default function CanvasView() {
 
           {unplacedCount > 0 ? (
             <p className="border-b border-border bg-status-in-progress/10 px-3 py-2 text-xs text-status-in-progress">
-              {unplacedCount} pin{unplacedCount > 1 ? "s" : ""} couldn’t be placed
-              on this page.
+              {unplacedCount} pin{unplacedCount > 1 ? "s" : ""} couldn’t be
+              placed on this page.
             </p>
           ) : null}
 
