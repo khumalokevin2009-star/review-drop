@@ -82,9 +82,7 @@ async def _get_user_by_email(db: AsyncSession, email: str) -> User | None:
 # --- Routes -----------------------------------------------------------------
 
 
-@router.post(
-    "/register", response_model=UserRead, status_code=status.HTTP_201_CREATED
-)
+@router.post("/register", response_model=UserRead, status_code=status.HTTP_201_CREATED)
 @limiter.limit(_AUTH_RATE_LIMIT)
 async def register(
     request: Request,
@@ -116,11 +114,13 @@ async def login(
     db: AsyncSession = Depends(get_db),
 ) -> TokenPair:
     user = await _get_user_by_email(db, data.email)
-    # Same generic error whether the email is unknown or the password is wrong,
-    # so we don't leak which emails are registered.
+    # Same generic error whether the email is unknown, the password is wrong, or
+    # the account is OAuth-only (NULL hash) — so we never leak which emails are
+    # registered or how they sign in.
     if (
         user is None
         or user.deleted_at is not None
+        or user.hashed_password is None
         or not security.verify_password(data.password, user.hashed_password)
     ):
         raise HTTPException(
@@ -266,9 +266,12 @@ async def change_password(
     db: AsyncSession = Depends(get_db),
 ) -> MessageResponse:
     user = await db.get(User, current_user.id)
-    # Generic message — don't confirm which part failed.
-    if user is None or not security.verify_password(
-        data.current_password, user.hashed_password
+    # Generic message — don't confirm which part failed. An OAuth-only user has
+    # no password to verify against (NULL hash); they'd set one via reset first.
+    if (
+        user is None
+        or user.hashed_password is None
+        or not security.verify_password(data.current_password, user.hashed_password)
     ):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,

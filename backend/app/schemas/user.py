@@ -26,6 +26,9 @@ class UserRead(UserBase):
 
     id: uuid.UUID
     plan: str
+    # 'password' | 'google' — how the account signs in (lets the UI hide the
+    # password-change card for OAuth-only users, show "Signed in with Google").
+    auth_provider: str
     # Billing state (CLAUDE.md Section 12). Surfaced so the UI can show
     # "Pro — trial ends 14 Jul" etc. Never exposes Stripe secret identifiers.
     subscription_status: str | None = None

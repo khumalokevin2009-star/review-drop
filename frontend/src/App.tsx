@@ -5,6 +5,7 @@ import { LoadingSpinner } from "@/components/shared/LoadingSpinner";
 import { ProtectedRoute } from "@/components/shared/ProtectedRoute";
 import ForgotPassword from "@/pages/auth/ForgotPassword";
 import Login from "@/pages/auth/Login";
+import OAuthCallback from "@/pages/auth/OAuthCallback";
 import Register from "@/pages/auth/Register";
 import Dashboard from "@/pages/dashboard/Dashboard";
 
@@ -29,6 +30,8 @@ export default function App() {
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
       <Route path="/forgot-password" element={<ForgotPassword />} />
+      {/* Google OAuth return — sets tokens from the URL fragment, then routes. */}
+      <Route path="/auth/callback" element={<OAuthCallback />} />
 
       {/* Public marketing pages */}
       <Route

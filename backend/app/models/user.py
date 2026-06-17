@@ -21,8 +21,21 @@ class User(UUIDMixin, TimestampMixin, SoftDeleteMixin, Base):
     email: Mapped[str] = mapped_column(
         String(255), unique=True, index=True, nullable=False
     )
-    hashed_password: Mapped[str] = mapped_column(String(255), nullable=False)
+    # Nullable: OAuth-only users (auth_provider='google') have no password. The
+    # password-login / change-password paths must guard against a NULL hash.
+    hashed_password: Mapped[str | None] = mapped_column(String(255), nullable=True)
     full_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    # How the account was created: 'password' (email+password) or 'google'
+    # (Google OAuth). A password account that later links Google keeps
+    # 'password' but gains a google_sub — it can then sign in either way.
+    auth_provider: Mapped[str] = mapped_column(
+        String(50), nullable=False, server_default="password"
+    )
+    # Google's stable subject id ('sub'); set when a Google identity is linked.
+    # Unique so one Google account maps to at most one user.
+    google_sub: Mapped[str | None] = mapped_column(
+        String(255), nullable=True, unique=True, index=True
+    )
     # `plan` is DERIVED from Stripe subscription state by the billing webhook
     # (services/billing_service.plan_for_status) — never set it manually. The
     # plan-limit checks (projects/reviews/export/watermark) read this field, so a

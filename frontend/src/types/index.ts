@@ -4,6 +4,9 @@
 
 export type Plan = "free" | "pro" | "studio";
 
+/** How the account signs in (CLAUDE.md §8). 'google' users have no password. */
+export type AuthProvider = "password" | "google";
+
 /** Raw Stripe subscription status mirrored from the backend (CLAUDE.md §12). */
 export type SubscriptionStatus =
   | "trialing"
@@ -17,6 +20,8 @@ export interface User {
   email: string;
   full_name: string | null;
   plan: Plan;
+  /** How the user signs in — 'password' or 'google' (linked accounts stay 'password'). */
+  auth_provider: AuthProvider;
   /** Billing state — `plan` is the access projection of this. */
   subscription_status: SubscriptionStatus;
   /** ISO timestamp; a cancelled sub keeps Pro until this moment. */

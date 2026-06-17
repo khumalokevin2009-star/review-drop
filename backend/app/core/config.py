@@ -59,6 +59,16 @@ class Settings(BaseSettings):
     # charged after the trial unless cancelled).
     STRIPE_TRIAL_PERIOD_DAYS: int = 30
 
+    # Google OAuth (sign-in / sign-up — OIDC authorization-code flow).
+    # Secrets come from backend/.env; never hardcode. When CLIENT_ID/SECRET are
+    # unset the /auth/google/* endpoints return a clean 503. The redirect URI
+    # defaults to BACKEND_URL + the callback path and must match a URI
+    # registered in the Google console (dev: http://localhost:8000/..., prod:
+    # https://orvellehq.com/...).
+    GOOGLE_CLIENT_ID: str | None = None
+    GOOGLE_CLIENT_SECRET: str | None = None
+    GOOGLE_REDIRECT_URI: str | None = None
+
     # Resend (transactional email — CLAUDE.md Section 11)
     RESEND_API_KEY: str | None = None
     EMAIL_FROM: str = "Orvelle <hello@orvellehq.com>"
